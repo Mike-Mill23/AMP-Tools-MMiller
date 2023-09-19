@@ -3,6 +3,8 @@ build/
 **/__pycache__/
 *.swp
 *~
+.vscode
+.gitignore
 
 # Ignore auto-generated scripts
 /build_and_run.sh
