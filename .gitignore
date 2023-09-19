@@ -1,10 +1,14 @@
 /bin/
-build/
+/build/
 **/__pycache__/
 *.swp
 *~
 .vscode
 .gitignore
+*.DS_Store
 
 # Ignore auto-generated scripts
 /build_and_run.sh
+/.env.sh
+/grade.sh
+/file_dump/
