@@ -2,381 +2,284 @@
 
 using namespace amp;
 
-// Implement your methods in the `.cpp` file, for example:
+
 amp::Path2D Bug1Algorithm::plan(const amp::Problem2D& problem) {
     bool success;
-    const double stepSize = 0.1;
-    amp::Path2D path;
-    std::vector<Eigen::Vector2d> collisions{};
-    Eigen::Vector2d hitPoint{};
-    Eigen::Vector2d leavePoint{};
-    std::array<amp::Path2D, 2> splitPath{};
+    LOG("Starting Plan " << bug.planCount);
 
-    path.waypoints.push_back(problem.q_init);
+    bug.problem = problem;
+    bug.path.waypoints.push_back(bug.problem.q_init);
 
-    while (!HW2::check(path, problem, false)) {
-    //for (int i = 0; i < 16; i++) {
-        success = step(problem, path, collisions, stepSize);
+    while (!HW2::check(bug.path, bug.problem, false)) {
+        move.moveToGoal = true;
+        success = step();
 
         if (!success) {
-            LOG("followObstacle");
-            followObstacle(problem, path, collisions, stepSize, hitPoint, leavePoint, splitPath);
-            // break;
-            LOG("gotoLeavePoint");
-            gotoLeavePoint(path, hitPoint, leavePoint, splitPath);
+            move.moveToGoal = false;
+            followObstacle();
+            gotoLeavePoint();
         }
 
-        collisions.clear();
-        splitPath.fill(amp::Path2D());
-    //}
+        bug.collisions.clear();
+        bug.splitPath.fill(amp::Path2D());
     }
 
-    // path.waypoints.push_back(problem.q_goal);
-
-    return path;
+    LOG("Ending Plan " << bug.planCount);
+    bug.planCount++;
+    return bug.path;
 }
 
-bool Bug1Algorithm::step(const amp::Problem2D& problem, amp::Path2D& path, std::vector<Eigen::Vector2d>& collisions, 
-                         double stepSize) {
-    Eigen::Vector2d currentPosition = path.waypoints.back();
-    Eigen::Vector2d nextPosition{};
-    Eigen::Vector2d currentToNext{};
-    Eigen::Vector2d currentToCollision{};
-    std::vector<Eigen::Vector2d> tmpCollisionList{};
-    double dist;
-    double direction;
+bool Bug1Algorithm::step() {
+    move.currentPosition = bug.path.waypoints.back();
+    bug.tmpCollisions.clear();
     bool success = false;
     bool isCollision;
 
-    //LOG("Current Position:\n" << currentPosition);
+    // LOG("Current Position:\n" << move.currentPosition);
 
-    const double rise = problem.q_goal[1] - currentPosition[1];
-    const double run = problem.q_goal[0] - currentPosition[0];
-    const double hyp = sqrt(pow(rise, 2) + pow(run, 2));
-
-    if (dist = distanceToGoal(problem, currentPosition) <= stepSize) {
-        nextPosition = problem.q_goal;
+    if (move.moveToGoal) {
+        move.rise = bug.problem.q_goal[1] - move.currentPosition[1];
+        move.run = bug.problem.q_goal[0] - move.currentPosition[0];
+        move.hyp = sqrt(pow(move.rise, 2) + pow(move.run, 2));
     } else {
-        nextPosition[0] = currentPosition[0] + (stepSize / hyp) * run;
-        nextPosition[1] = currentPosition[1] + (stepSize / hyp) * rise;
+        move.rise = move.directionTravel[1];
+        move.run = move.directionTravel[0];
+        move.hyp = move.directionTravel.norm();
     }
 
-    amp::Path2D checkPath = path;
-    checkPath.waypoints.push_back(nextPosition);
-    checkPath.waypoints.push_back(problem.q_goal);
+    if (move.dist = distanceToGoal(bug.problem, move.currentPosition) <= bug.stepSize) {
+        move.nextPosition = bug.problem.q_goal;
+    } else {
+        move.nextPosition[0] = move.currentPosition[0] + (bug.stepSize / move.hyp) * move.run;
+        move.nextPosition[1] = move.currentPosition[1] + (bug.stepSize / move.hyp) * move.rise;
+    }
 
-    HW2::check(checkPath, problem, tmpCollisionList, false);
-    isCollision = isTrueCollision(problem, tmpCollisionList, currentPosition, nextPosition, stepSize);
+    // LOG("Next Position:\n" << move.nextPosition);
+
+    move.checkPath = bug.path;
+    move.checkPath.waypoints.push_back(move.nextPosition);
+    move.checkPath.waypoints.push_back(bug.problem.q_goal);
+
+    HW2::check(move.checkPath, bug.problem, bug.tmpCollisions, false);
+    isCollision = isTrueCollision();
+
 
     if (isCollision) {
-        collisions.push_back(tmpCollisionList.front());
-        if (collisions.size() > 2) {
-            collisions.erase(collisions.begin());
+        bug.collisions.push_back(bug.tmpCollisions.front());
+        if (bug.collisions.size() > 2) {
+            bug.collisions.erase(bug.collisions.begin());
         }
     } else {
         success = true;
-        path.waypoints.push_back(nextPosition);
+        bug.path.waypoints.push_back(move.nextPosition);
     }
+
+    bug.tmpCollisions.clear();
+    move.currentPosition = bug.path.waypoints.back();
 
     return success;
 }
 
-bool Bug1Algorithm::step(const amp::Problem2D& problem, amp::Path2D& path, std::vector<Eigen::Vector2d>& collisions, 
-                         double stepSize, const double rise, const double run, const double hyp) {
-    Eigen::Vector2d currentPosition = path.waypoints.back();
-    Eigen::Vector2d nextPosition{};
-    Eigen::Vector2d currentToNext{};
-    Eigen::Vector2d currentToCollision{};
-    std::vector<Eigen::Vector2d> tmpCollisionList{};
-    double dist;
-    double direction;
-    bool success = false;
-    bool isCollision;
-
-    //LOG("Current Position:\n" << currentPosition);
-
-    if (dist = distanceToGoal(problem, currentPosition) <= stepSize) {
-        nextPosition = problem.q_goal;
-    } else {
-        nextPosition[0] = currentPosition[0] + (stepSize / hyp) * run;
-        nextPosition[1] = currentPosition[1] + (stepSize / hyp) * rise;
-    }
-
-    amp::Path2D checkPath = path;
-    checkPath.waypoints.push_back(nextPosition);
-    checkPath.waypoints.push_back(problem.q_goal);
-
-    HW2::check(checkPath, problem, tmpCollisionList, false);
-    isCollision = isTrueCollision(problem, tmpCollisionList, currentPosition, nextPosition, stepSize);
-
-    if (isCollision) {
-        collisions.push_back(tmpCollisionList.front());
-        if (collisions.size() > 2) {
-            collisions.erase(collisions.begin());
-        }
-    } else {
-        success = true;
-        path.waypoints.push_back(nextPosition);
-    }
-
-    return success;
-}
-
-void Bug1Algorithm::followObstacle(const amp::Problem2D& problem, amp::Path2D& path, std::vector<Eigen::Vector2d>& collisions, 
-                                   double stepSize, Eigen::Vector2d& hitPoint, Eigen::Vector2d& leavePoint, 
-                                   std::array<amp::Path2D, 2>& splitPath) {
-    hitPoint = path.waypoints.back();
-    leavePoint = path.waypoints.back();
-    Eigen::Vector2d directionWall = getRelativeVectorNormalized(hitPoint, collisions.back());
-    Eigen::Vector2d directionTravel = directionWall;
-    std::vector<Eigen::Vector2d> searchCollisionList{};
-    double searchAngle0;
+void Bug1Algorithm::followObstacle() {
+    // LOG("-------- followObstacle --------");
+    bug.hitPoint = bug.path.waypoints.back();
+    bug.leavePoint = bug.path.waypoints.back();
+    move.directionWall = getRelativeVectorNormalized(bug.hitPoint, bug.collisions.back());
+    move.directionTravel = move.directionWall;
+    move.prevDirectionTravel = Eigen::Vector2d(0.0, 0.0);
+    int stepCount = 1;
+    bool searched = false;
 
     do {
-        searchAngle0 = atan2(directionWall[1], directionWall[0]);
+        find.startAngle = atan2(move.directionWall[1], move.directionWall[0]);
         
-        while (!searchSurroundings(problem, path, directionTravel, path.waypoints.back(), searchCollisionList, stepSize, searchAngle0)) {
-            // directionTravel = getRelativeVectorNormalized(path.waypoints.back(), searchCollisionList.back());
-            // Eigen::Vector2d nextStep(path.waypoints.back()[0] + (stepSize / directionTravel.norm()) * directionTravel[0], 
-            //                          path.waypoints.back()[1] + (stepSize / directionTravel.norm()) * directionTravel[1]);
-            // path.waypoints.pop_back();
-            // directionTravel = getRelativeVectorNormalized(path.waypoints.back(), nextStep);
-            // LOG("-------- Stuck in Search Surroundings --------");
-            path.waypoints.pop_back();
-            double distanceToCollision = distance(path.waypoints.back(), searchCollisionList.back());
-            directionTravel = getRelativeVectorNormalized(path.waypoints.back(), searchCollisionList.back());
-            searchAngle0 = atan2(directionTravel[1], directionTravel[0]);
-            // LOG("Current Position:\n" << path.waypoints.back());
-            // LOG("Collision point:\n" << searchCollisionList.back());
-            step(problem, path, searchCollisionList, (distanceToCollision / 2.0), directionTravel[1], directionTravel[0], directionTravel.norm());
-            // LOG("post step Position:\n" << path.waypoints.back());
-            // LOG("post step collision point:\n" << searchCollisionList.back());
-        }
-
-        while (!step(problem, path, searchCollisionList, stepSize, directionTravel[1], directionTravel[0], directionTravel.norm())) {
-            // Eigen::Vector2d collisionDirection = getRelativeVectorNormalized(path.waypoints.back(), searchCollisionList.back());
-            // directionTravel = getRelativeVectorNormalized(searchCollisionList.front(), searchCollisionList.back());
-            double currentAngle = atan2(directionTravel[1], directionTravel[0]);
-            Eigen::Vector2d tmpDirectionTravel(cos(currentAngle + (M_PI / 2)), sin(currentAngle + (M_PI / 2)));
-            step(problem, path, searchCollisionList, stepSize, tmpDirectionTravel[1], tmpDirectionTravel[0], tmpDirectionTravel.norm());
-            // directionTravel[0] = cos(currentAngle + (M_PI / 2));
-            // directionTravel[1] = sin(currentAngle + (M_PI / 2));
-            // Eigen::Vector2d currentToLastCollision = getRelativeVectorNormalized(searchCollisionList.back(), searchCollisionList.front());
-            // if (directionTravel.dot(currentToLastCollision)) {
-            //     directionTravel = currentToLastCollision;
-            // } else {
-            //     directionTravel = getRelativeVectorNormalized(searchCollisionList.front(), searchCollisionList.back());
-            // }
-        }
-
-        if (distanceToGoal(problem, path.waypoints.back()) < distanceToGoal(problem, leavePoint)) {
-            if (splitPath[1].waypoints.size() > 0) {
-                splitPath[0].waypoints.insert(splitPath[0].waypoints.end(), splitPath[1].waypoints.begin(), splitPath[1].waypoints.end());
-                splitPath[1].waypoints.clear();
+        while (!searchSurroundings()) {
+            if (!searched) {
+                searched = true;
+                bug.path.waypoints.pop_back();
             }
-            leavePoint = path.waypoints.back();
-            splitPath[0].waypoints.push_back(leavePoint);
+            double distanceToCollision = distance(bug.path.waypoints.back(), bug.collisions.back());
+            move.directionTravel = getRelativeVectorNormalized(bug.path.waypoints.back(), bug.collisions.back());
+            move.prevDirectionTravel = Eigen::Vector2d(0.0, 0.0);
+            find.startAngle = atan2(move.directionTravel[1], move.directionTravel[0]);
+            bug.tmpStepSize = bug.stepSize;
+            bug.stepSize = distanceToCollision / 2;
+            step();
+            bug.stepSize = bug.tmpStepSize;
+        }
+        searched = false;
+
+        while (!step()) {
+            double currentAngle = atan2(move.directionTravel[1], move.directionTravel[0]);
+            move.prevDirectionTravel = Eigen::Vector2d(0.0, 0.0);
+            move.tmpDirectionTravel = move.directionTravel;
+            move.directionTravel[0] = cos(currentAngle + (stepCount * M_PI / 2));
+            move.directionTravel[1] = sin(currentAngle + (stepCount * M_PI / 2));
+            step();
+            move.directionTravel = move.tmpDirectionTravel;
+            stepCount++;
+        }
+        stepCount = 1;
+
+        if (distanceToGoal(bug.problem, bug.path.waypoints.back()) < distanceToGoal(bug.problem, bug.leavePoint)) {
+            if (bug.splitPath[1].waypoints.size() > 0) {
+                bug.splitPath[0].waypoints.insert(bug.splitPath[0].waypoints.end(), bug.splitPath[1].waypoints.begin(), 
+                                                  bug.splitPath[1].waypoints.end());
+                bug.splitPath[1].waypoints.clear();
+            }
+            bug.leavePoint = bug.path.waypoints.back();
+            bug.splitPath[0].waypoints.push_back(bug.leavePoint);
         } else {
-            splitPath[1].waypoints.push_back(path.waypoints.back());
+            bug.splitPath[1].waypoints.push_back(bug.path.waypoints.back());
         }
 
-        directionWall = getRelativeVectorNormalized(path.waypoints.back(), searchCollisionList.back());
-    } while (sqrt(pow(path.waypoints.back()[0] - hitPoint[0],2) + pow(path.waypoints.back()[1] - hitPoint[1],2)) >= (0.95 * stepSize));
+        move.directionWall = getRelativeVectorNormalized(bug.path.waypoints.back(), bug.collisions.back());
+    } while (sqrt(pow(bug.path.waypoints.back()[0] - bug.hitPoint[0],2) + 
+                  pow(bug.path.waypoints.back()[1] - bug.hitPoint[1],2)) >= (0.95 * bug.stepSize));
 
-    path.waypoints.push_back(hitPoint);
+    bug.path.waypoints.push_back(bug.hitPoint);
 
     return;
 }
 
-bool Bug1Algorithm::searchSurroundings(const amp::Problem2D& problem, amp::Path2D& path, Eigen::Vector2d& directionTravel, 
-                                      Eigen::Vector2d& currentPosition, std::vector<Eigen::Vector2d>& searchCollisionList, 
-                                      double stepSize, const double startAngle) {
-    const int numSearchPoints = 180;
-    const int pathSize = path.waypoints.size();
-    amp::Path2D searchRay = path;
-    double searchAngle;
-    double xSearch;
-    double ySearch;
-    double dist;
-    double direction;
-    bool isCollision = false;
-    bool prevIsCollision = false;
-    bool startWithCollision = false;
-    std::vector<Eigen::Vector2d> edgePoints{};
-    std::vector<Eigen::Vector2d> tmpCollisionList{};
+bool Bug1Algorithm::searchSurroundings() {
+    find.pathSize = bug.path.waypoints.size();
+    find.searchRay = bug.path;
+    find.isCollision = false;
+    find.prevIsCollision = false;
+    find.startWithCollision = false;
+    find.edgePoints.clear();
 
-    for (int i = 0; i < numSearchPoints; i++) {
-        searchAngle = (2 * M_PI * i / numSearchPoints) + startAngle;
-        xSearch = currentPosition[0] + (stepSize * cos(searchAngle));
-        ySearch = currentPosition[1] + (stepSize * sin(searchAngle));
-        Eigen::Vector2d nextSearch(xSearch, ySearch);
+    for (int i = 0; i < find.numSearchPoints; i++) {
+        find.searchAngle = (2 * M_PI * i / find.numSearchPoints) + find.startAngle;
+        move.nextPosition[0] = move.currentPosition[0] + (bug.stepSize * cos(find.searchAngle));
+        move.nextPosition[1] = move.currentPosition[1] + (bug.stepSize * sin(find.searchAngle));
 
-        searchRay.waypoints.push_back(nextSearch);
-        searchRay.waypoints.push_back(problem.q_goal);
-        tmpCollisionList.clear();
-        HW2::check(searchRay, problem, tmpCollisionList, false);
-        isCollision = isTrueCollision(problem, tmpCollisionList, currentPosition, nextSearch, stepSize);
+        find.searchRay.waypoints.push_back(move.nextPosition);
+        find.searchRay.waypoints.push_back(bug.problem.q_goal);
+        bug.tmpCollisions.clear();
+        HW2::check(find.searchRay, bug.problem, bug.tmpCollisions, false);
+        find.isCollision = isTrueCollision();
+
+        if (find.isCollision && move.directionTravel.dot(move.prevDirectionTravel) >= DIRECTION_EPSILON) {
+            bug.collisions.push_back(bug.tmpCollisions.front());
+            if (bug.collisions.size() > 2) {
+                bug.collisions.erase(bug.collisions.begin());
+            }
+            break;
+        }
 
         if (i == 0) {
-            startWithCollision = isCollision;
+            find.startWithCollision = find.isCollision;
         }
 
-        if (startWithCollision) {
-            // if (currentPosition[1] >= 13.0) {
-            //     LOG("-------- Start in collision --------");
-            //     LOG("edgepoints size: " << edgePoints.size());
-            //     LOG("isCollision: " << isCollision);
-            //     LOG("prevIsCollision: " << prevIsCollision);
-            // }
-            if (isCollision && prevIsCollision) {
-                if (edgePoints.size() > 0) {
-                    edgePoints[edgePoints.size() - 1] = tmpCollisionList.front();
+        if (find.startWithCollision) {
+            if (find.isCollision && find.prevIsCollision) {
+                if (find.edgePoints.size() > 0) {
+                    find.edgePoints[find.edgePoints.size() - 1] = bug.tmpCollisions.front();
                 }
-            } else if (isCollision && !prevIsCollision) {
-                edgePoints.push_back(tmpCollisionList.front());
-                if (edgePoints.size() == 2) {
-                    calculateDirectionTravel(currentPosition, directionTravel, searchCollisionList, edgePoints);
+            } else if (find.isCollision && !find.prevIsCollision) {
+                find.edgePoints.push_back(bug.tmpCollisions.front());
+                if (find.edgePoints.size() == 2) {
+                    calculateDirectionTravel();
                     break;
                 }
             }
         } else {
-            if (edgePoints.size() == 2) {
-                if (isCollision) {
-                    edgePoints[edgePoints.size() - 1] = tmpCollisionList.front();
+            if (find.edgePoints.size() == 2) {
+                if (find.isCollision) {
+                    find.edgePoints[find.edgePoints.size() - 1] = bug.tmpCollisions.front();
                 } else {
-                    calculateDirectionTravel(currentPosition, directionTravel, searchCollisionList, edgePoints);
-                    isCollision = prevIsCollision;
+                    calculateDirectionTravel();
+                    find.isCollision = find.prevIsCollision;
                     break;
                 }
             } else {
-                if (isCollision) {
-                    edgePoints.push_back(tmpCollisionList.front());
+                if (find.isCollision) {
+                    find.edgePoints.push_back(bug.tmpCollisions.front());
                 }
             }
         }
 
-        prevIsCollision = isCollision;
-        searchRay.waypoints.erase(searchRay.waypoints.begin() + pathSize, searchRay.waypoints.end());
+        find.prevIsCollision = find.isCollision;
+        find.searchRay.waypoints.erase(find.searchRay.waypoints.begin() + find.pathSize, find.searchRay.waypoints.end());
     }
 
-    LOG("-------- Return search surroundings --------");
-    LOG("Current position:\n" << currentPosition);
-    LOG("Direction Travel:\n" << directionTravel);
-    LOG("collision list front:\n" << searchCollisionList.front());
-    LOG("collision list back:\n" << searchCollisionList.back());
-    LOG("isCollision: " << isCollision);
-    return isCollision;
+    move.prevDirectionTravel = move.directionTravel;
+    bug.tmpCollisions.clear();
+    return find.isCollision;
 }
 
-void Bug1Algorithm::calculateDirectionTravel(Eigen::Vector2d& currentPosition, Eigen::Vector2d& directionTravel, 
-                                             std::vector<Eigen::Vector2d>& searchCollisionList, 
-                                             std::vector<Eigen::Vector2d>& edgePoints) {
-    Eigen::Vector2d point1 = getRelativeVectorNormalized(currentPosition, edgePoints.front());
-    Eigen::Vector2d point2 = getRelativeVectorNormalized(currentPosition, edgePoints.back());
+void Bug1Algorithm::calculateDirectionTravel() {
+    checker.toPoint1 = getRelativeVectorNormalized(move.currentPosition, find.edgePoints.front());
+    checker.toPoint2 = getRelativeVectorNormalized(move.currentPosition, find.edgePoints.back());
 
-    double dotProdPoint1 = directionTravel.dot(point1);
-    double dotProdPoint2 = directionTravel.dot(point2);
+    checker.dotProdPoint1 = move.directionTravel.dot(checker.toPoint1);
+    checker.dotProdPoint2 = move.directionTravel.dot(checker.toPoint2);
 
-    double checkLeftPt1 = (directionTravel[0] * point1[1]) - (directionTravel[1] * point1[0]);
-    double checkLeftPt2 = (directionTravel[0] * point2[1]) - (directionTravel[1] * point2[0]);
+    checker.checkLeftPt1 = (move.directionTravel[0] * checker.toPoint1[1]) - (move.directionTravel[1] * checker.toPoint1[0]);
+    checker.checkLeftPt2 = (move.directionTravel[0] * checker.toPoint2[1]) - (move.directionTravel[1] * checker.toPoint2[0]);
 
-    // LOG("-------- calc dir travel --------");
-    // LOG("Current Position:\n" << currentPosition);
-    // LOG("edgePoint front:\n" << edgePoints.front());
-    // LOG("edgePoint back:\n" << edgePoints.back());
-    // LOG("left pt 1:\n" << checkLeftPt1);
-    // LOG("left pt 2:\n" << checkLeftPt2);
-
-    if (dotProdPoint1 * dotProdPoint2 < 0) {
-        if (dotProdPoint1 > 0) {
-            directionTravel = getRelativeVectorNormalized(point2, point1);
-            searchCollisionList.clear();
-            searchCollisionList.push_back(edgePoints.back());
-            searchCollisionList.push_back(edgePoints.front());
+    if (checker.checkLeftPt1 * checker.checkLeftPt2 < 0) {   // Different sides of directionTravel
+        if (checker.checkLeftPt1 >= 0) {
+            move.directionTravel = getRelativeVectorNormalized(checker.toPoint2, checker.toPoint1);
+            bug.collisions.clear();
+            bug.collisions.push_back(find.edgePoints.back());
+            bug.collisions.push_back(find.edgePoints.front());
         } else {
-            directionTravel = getRelativeVectorNormalized(point1, point2);
-            searchCollisionList.clear();
-            searchCollisionList.push_back(edgePoints.front());
-            searchCollisionList.push_back(edgePoints.back());
+            move.directionTravel = getRelativeVectorNormalized(checker.toPoint1, checker.toPoint2);
+            bug.collisions.clear();
+            bug.collisions.push_back(find.edgePoints.front());
+            bug.collisions.push_back(find.edgePoints.back());
         }
-    } else if (dotProdPoint1 + dotProdPoint2 < 0) {
-        if (checkLeftPt1 * checkLeftPt2 > 0) {
-            if (dotProdPoint1 > dotProdPoint2) {
-                directionTravel = getRelativeVectorNormalized(point2, point1);
-                searchCollisionList.clear();
-                searchCollisionList.push_back(edgePoints.back());
-                searchCollisionList.push_back(edgePoints.front());
-            } else {
-                directionTravel = getRelativeVectorNormalized(point1, point2);
-                searchCollisionList.clear();
-                searchCollisionList.push_back(edgePoints.front());
-                searchCollisionList.push_back(edgePoints.back());
-            }
+    } else {                                                 // On the same side of directionTravel
+        if (checker.dotProdPoint1 > checker.dotProdPoint2) {
+            move.directionTravel = getRelativeVectorNormalized(checker.toPoint2, checker.toPoint1);
+            bug.collisions.clear();
+            bug.collisions.push_back(find.edgePoints.back());
+            bug.collisions.push_back(find.edgePoints.front());
         } else {
-            if (checkLeftPt1 >= 0) {
-                directionTravel = getRelativeVectorNormalized(point2, point1);
-                searchCollisionList.clear();
-                searchCollisionList.push_back(edgePoints.back());
-                searchCollisionList.push_back(edgePoints.front());
-            } else {
-                directionTravel = getRelativeVectorNormalized(point1, point2);
-                searchCollisionList.clear();
-                searchCollisionList.push_back(edgePoints.front());
-                searchCollisionList.push_back(edgePoints.back());
-            }
-        }
-    } else {
-        if (checkLeftPt1 >= 0) {
-            directionTravel = getRelativeVectorNormalized(point2, point1);
-            searchCollisionList.clear();
-            searchCollisionList.push_back(edgePoints.back());
-            searchCollisionList.push_back(edgePoints.front());
-        } else {
-            directionTravel = getRelativeVectorNormalized(point1, point2);
-            searchCollisionList.clear();
-            searchCollisionList.push_back(edgePoints.front());
-            searchCollisionList.push_back(edgePoints.back());
+            move.directionTravel = getRelativeVectorNormalized(checker.toPoint1, checker.toPoint2);
+            bug.collisions.clear();
+            bug.collisions.push_back(find.edgePoints.front());
+            bug.collisions.push_back(find.edgePoints.back());
         }
     }
 
     return;
 }
 
-void Bug1Algorithm::gotoLeavePoint(amp::Path2D& path, Eigen::Vector2d& hitPoint, Eigen::Vector2d& leavePoint, 
-                    std::array<amp::Path2D, 2>& splitPath) {
-    double distanceLeft = splitPath[0].length();
-    double distanceRight = splitPath[1].length();
+void Bug1Algorithm::gotoLeavePoint() {
+    double distanceLeft = bug.splitPath[0].length();
+    double distanceRight = bug.splitPath[1].length();
 
     if (distanceRight < distanceLeft) {
-        path.waypoints.insert(path.waypoints.end(), splitPath[1].waypoints.rbegin(), splitPath[1].waypoints.rend());
+        bug.path.waypoints.insert(bug.path.waypoints.end(), bug.splitPath[1].waypoints.rbegin(), 
+                                  bug.splitPath[1].waypoints.rend());
     } else {
-        path.waypoints.insert(path.waypoints.end(), splitPath[0].waypoints.begin(), splitPath[0].waypoints.end());
+        bug.path.waypoints.insert(bug.path.waypoints.end(), bug.splitPath[0].waypoints.begin(), 
+                                  bug.splitPath[0].waypoints.end());
     }
 
-    path.waypoints.push_back(leavePoint);
+    bug.path.waypoints.push_back(bug.leavePoint);
 
     return;
 }
 
-bool Bug1Algorithm::isTrueCollision(const amp::Problem2D& problem, std::vector<Eigen::Vector2d>& collisionList, 
-                                  Eigen::Vector2d& currentPosition, Eigen::Vector2d& nextPosition, double stepSize) {
+bool Bug1Algorithm::isTrueCollision() {
     bool isTrueCollision;
-    double dist;
-    double direction;
-    Eigen::Vector2d currentToNext{};
-    Eigen::Vector2d currentToCollision{};
 
-    if (collisionList.size() > 0) {
-        currentToNext = getRelativeVectorNormalized(currentPosition, nextPosition);
-        currentToCollision = getRelativeVectorNormalized(currentPosition, collisionList.front());
-        dist = distance(currentPosition, collisionList.front());
-        direction = currentToNext.dot(currentToCollision);
+    if (bug.tmpCollisions.size() > 0) {
+        checker.currentToNext = getRelativeVectorNormalized(move.currentPosition, move.nextPosition);
+        checker.currentToCollision = getRelativeVectorNormalized(move.currentPosition, bug.tmpCollisions.front());
+        checker.dist = distance(move.currentPosition, bug.tmpCollisions.front());
+        checker.direction = checker.currentToNext.dot(checker.currentToCollision);
     } else {
-        dist = distanceToGoal(problem, currentPosition);
-        direction = 0.0;
+        checker.dist = distanceToGoal(bug.problem, move.currentPosition);
+        checker.direction = 0.0;
     }
 
-    if (dist <= (1.01 * stepSize) && direction >= DIRECTION_EPSILON) {
+    if (checker.dist <= (1.1 * bug.stepSize) && checker.direction >= DIRECTION_EPSILON) {
         isTrueCollision = true;
     } else {
         isTrueCollision = false;
@@ -401,28 +304,52 @@ double Bug1Algorithm::distanceToGoal(const amp::Problem2D& problem, Eigen::Vecto
     return distance;
 }
 
-// Your algorithm solves the problem and generates a path. Here is a hard-coded to path for now...
-// amp::Path2D path;
-// path.waypoints.push_back(problem.q_init);
-// path.waypoints.push_back(Eigen::Vector2d(1.0, 5.0));
-// path.waypoints.push_back(Eigen::Vector2d(3.0, 9.0));
-// path.waypoints.push_back(problem.q_goal);
+void Bug1Algorithm::clear() {
+    bug.stepSize = 0.1;
+    bug.tmpStepSize = 0.0;
+    bug.problem = amp::Problem2D();
+    bug.path = amp::Path2D();
+    bug.collisions.clear();
+    bug.tmpCollisions.clear();
+    bug.hitPoint = Eigen::Vector2d(0.0, 0.0);
+    bug.leavePoint = Eigen::Vector2d(0.0, 0.0);
+    bug.splitPath.fill(amp::Path2D());
+    bug.planCount = 1;
 
-// Your algorithm solves the problem and generates a path. Here is a hard-coded to path for now...
-// amp::Path2D path;
-// Eigen::Vector2d currentPosition(0.989949, 0.989949);
-// double xSearch;
-// double ySearch;
-// double searchAngle;
-// path.waypoints.push_back(problem.q_init);
-// path.waypoints.push_back(currentPosition);
+    move.checkPath = amp::Path2D();
+    move.currentPosition = Eigen::Vector2d(0.0, 0.0);
+    move.nextPosition = Eigen::Vector2d(0.0, 0.0);
+    move.directionWall = Eigen::Vector2d(0.0, 0.0);
+    move.directionTravel = Eigen::Vector2d(0.0, 0.0);
+    move.prevDirectionTravel = Eigen::Vector2d(0.0, 0.0);
+    move.tmpDirectionTravel = Eigen::Vector2d(0.0, 0.0);
+    move.dist = 0.0;
+    move.rise = 0.0;
+    move.run = 0.0;
+    move.hyp = 0.0;
+    move.moveToGoal = true;
 
-// for (int i = 0; i < 180; i++) {
-//     searchAngle = (2 * M_PI * i / 180);
-//     xSearch = currentPosition[0] + (0.1 * cos(searchAngle));
-//     ySearch = currentPosition[1] + (0.1 * sin(searchAngle));
-//     Eigen::Vector2d nextSearch(xSearch, ySearch);
+    find.pathSize = 0;
+    find.searchRay = amp::Path2D();
+    find.startAngle = 0.0;
+    find.searchAngle = 0.0;
+    find.dist = 0.0;
+    find.direction = 0.0;
+    find.isCollision = false;
+    find.prevIsCollision = false;
+    find.startWithCollision = false;
+    find.edgePoints.clear();
 
-//     path.waypoints.push_back(nextSearch);
-//     path.waypoints.push_back(currentPosition);
-    // }
+    checker.toPoint1 = Eigen::Vector2d(0.0, 0.0);
+    checker.toPoint2 = Eigen::Vector2d(0.0, 0.0);
+    checker.currentToNext = Eigen::Vector2d(0.0, 0.0);
+    checker.currentToCollision = Eigen::Vector2d(0.0, 0.0);
+    checker.dotProdPoint1 = 0.0;
+    checker.dotProdPoint2 = 0.0;
+    checker.checkLeftPt1 = 0.0;
+    checker.checkLeftPt2 = 0.0;
+    checker.dist = 0.0;
+    checker.direction = 0.0;
+
+    return;
+}
