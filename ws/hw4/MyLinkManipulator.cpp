@@ -70,9 +70,6 @@ Eigen::Vector2d MyLinkManipulator::getJointLocation(const ManipulatorState& stat
     return Eigen::Vector2d(holder[0], holder[1]);
 }
 
-// Find halfway link point
-// calculate with law of cosines
-// jointangle = angle + targetangle - cumangle
 ManipulatorState MyLinkManipulator::getConfigurationFromIK(const Eigen::Vector2d& end_effector_location) const {
     ManipulatorState jointAngles{};
     ManipulatorState tmpJointAngles{};

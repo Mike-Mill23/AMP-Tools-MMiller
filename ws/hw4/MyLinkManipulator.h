@@ -12,6 +12,7 @@ namespace amp {
 
     class MyLinkManipulator : public LinkManipulator2D {
         public:
+            MyLinkManipulator() = default;
             MyLinkManipulator(const std::vector<double>& linkLengths, 
                               const ManipulatorState& config, 
                               const Eigen::Vector2d& baseLocation = Eigen::Vector2d(0.0, 0.0));
