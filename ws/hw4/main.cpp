@@ -6,9 +6,11 @@
 
 // Include the header of the shared class
 #include "MinkowskiDifference.h"
+#include "CollisionDetector.h"
 
 // Include headers from hw4 ws
 #include "MyLinkManipulator.h"
+#include "MyGridCSpace.h"
 
 
 using namespace amp;
@@ -52,46 +54,33 @@ int main(int argc, char** argv) {
 
     /*-------- Exercise 3 --------*/
     {
-    
+    std::vector<double> linkLengths{1.0, 1.0};
+    ManipulatorState jointAngles{0.0, 0.0};
+    MyLinkManipulator planarManipulator{linkLengths, jointAngles};
+
+    amp::Environment2D Ex3aEnv = HW4::getEx3Workspace1();
+    MyGridCSpace2DConstructor gridCtor3a{};
+    std::unique_ptr<amp::GridCSpace2D> ex3aGridSpace = gridCtor3a.construct(planarManipulator, Ex3aEnv);
+    Visualizer::makeFigure(Ex3aEnv, planarManipulator, jointAngles);
+    Visualizer::makeFigure(*ex3aGridSpace);
+
+    amp::Environment2D Ex3bEnv = HW4::getEx3Workspace2();
+    MyGridCSpace2DConstructor gridCtor3b{};
+    std::unique_ptr<amp::GridCSpace2D> ex3bGridSpace = gridCtor3b.construct(planarManipulator, Ex3bEnv);
+    Visualizer::makeFigure(Ex3bEnv, planarManipulator, jointAngles);
+    Visualizer::makeFigure(*ex3bGridSpace);
+
+    amp::Environment2D Ex3cEnv = HW4::getEx3Workspace3();
+    MyGridCSpace2DConstructor gridCtor3c{};
+    std::unique_ptr<amp::GridCSpace2D> ex3cGridSpace = gridCtor3c.construct(planarManipulator, Ex3cEnv);
+    Visualizer::makeFigure(Ex3cEnv, planarManipulator, jointAngles);
+    Visualizer::makeFigure(*ex3cGridSpace);
+
+    Visualizer::showFigures();
     }
 
     // Grade method
-    //amp::HW4::grade<MyLinkManipulator>(constructor, "nonhuman.biologic@myspace.edu", argc, argv);
+    MyGridCSpace2DConstructor gridCtor{};
+    amp::HW4::grade<MyLinkManipulator>(gridCtor, "michael.miller-5@colorado.edu", argc, argv);
     return 0;
 }
-
-
-
-/*-------- Running Exercise 1 --------*/
-// amp::Obstacle2D Ex1Triangle = HW4::getEx1TriangleObstacle();
-
-// amp::Obstacle2D Ex1aCSpace = MinkowskiDifference(Ex1Triangle, Ex1Triangle);
-// std::vector<amp::Polygon> polys{};
-// polys.push_back(Ex1aCSpace);
-// Visualizer::makeFigure(polys);
-
-// std::vector<double> rotationAngles{};
-// int numRotations = 12;
-// std::vector<amp::Obstacle2D> Ex1bCSpace = MinkowskiDifference(Ex1Triangle, Ex1Triangle, rotationAngles, numRotations);
-// Visualizer::makeFigure(Ex1bCSpace, rotationAngles);
-
-// Visualizer::showFigures();
-
-
-/*-------- Debugging Minkowski Difference --------*/
-// amp::Obstacle2D Ex1Triangle = HW4::getEx1TriangleObstacle();
-// amp::Obstacle2D rotatedEx1Tri = rotatePolygon(Ex1Triangle, (120 * M_PI / 180));
-
-// amp::Obstacle2D Ex1bCSpace = MinkowskiDifference(rotatedEx1Tri, Ex1Triangle);
-
-// std::vector<amp::Polygon> polys{};
-// polys.push_back(Ex1Triangle);
-// Visualizer::makeFigure(polys);
-// polys.clear();
-// polys.push_back(rotatedEx1Tri);
-// Visualizer::makeFigure(polys);
-// polys.clear();
-// polys.push_back(Ex1bCSpace);
-// Visualizer::makeFigure(polys);
-
-// Visualizer::showFigures();
