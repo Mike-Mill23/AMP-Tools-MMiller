@@ -6,26 +6,44 @@ using namespace amp;
 amp::Path2D MyGDAlgorithm::plan(const amp::Problem2D& problem) {
     amp::Path2D path{};
     std::vector<Eigen::Vector2d> momentum{};
+    std::vector<double> ema{};
     Eigen::Vector2d gradient{0.0, 0.0};
     Eigen::Vector2d q_next{0.0, 0.0};
     Eigen::Vector2d q_step{0.0, 0.0};
     Eigen::Vector2d momentum_step{0.0, 0.0};
+    double ema_step{0.0};
     double uValuePrev{0.0};
     double uValue{0.0};
     double stepSize{0.05};
-    const int stepsAhead = 50;
+    const int stepsAhead{50};
+    int gradPerturbCount{1};
 
     path.waypoints.push_back(problem.q_init);
     momentum.push_back(Eigen::Vector2d(0.0, 0.0));
+    ema.push_back(0.0);
     setStarParams(problem);
     uValuePrev = U(path.waypoints.back(), problem);
 
     // while (gradU(path.waypoints.back(), problem).norm() >= epsilon || distanceL2(path.waypoints.back(), problem.q_goal) > d_star_goal) {
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < 10000; i++) {
         gradient = gradU(path.waypoints.back(), problem);
-        lookaheadForLocalMin(path.waypoints.back(), q_step, stepsAhead, gradient, momentum, momentum_step, problem);
+        lookaheadForLocalMin(path.waypoints.back(), q_step, stepsAhead, gradient, momentum, momentum_step, ema, ema_step, problem);
+        // double startAngle = atan2(-gradient.normalized()[1], -gradient.normalized()[0]);
+        // gradPerturbCount = 1;
+        // while (lookaheadForLocalMin(path.waypoints.back(), q_step, stepsAhead, gradient, momentum, momentum_step, problem)) {
+        //     double perturbAngle = (2 * M_PI * gradPerturbCount / 180) + startAngle;
+
+        //     gradient[0] = gradient[0] * cos(perturbAngle) - gradient[1] * sin(perturbAngle);
+        //     gradient[1] = gradient[0] * sin(perturbAngle) + gradient[1] * cos(perturbAngle);
+
+        //     gradPerturbCount++;
+        //     if (gradPerturbCount >= 180) {
+        //         break;
+        //     }
+        // }
         path.waypoints.push_back(q_step);
         momentum.push_back(momentum_step);
+        ema.push_back(ema_step);
     }
 
     path.waypoints.push_back(problem.q_goal);
@@ -33,7 +51,8 @@ amp::Path2D MyGDAlgorithm::plan(const amp::Problem2D& problem) {
 }
 
 bool MyGDAlgorithm::lookaheadForLocalMin(Eigen::Vector2d q_curr, Eigen::Vector2d& q_step, const int& stepsAhead, Eigen::Vector2d gradient0, 
-                                         std::vector<Eigen::Vector2d> momentum, Eigen::Vector2d& momentum_step, const amp::Problem2D& problem) {
+                                         std::vector<Eigen::Vector2d> momentum, Eigen::Vector2d& momentum_step, 
+                                         std::vector<double> ema, double& ema_step, const amp::Problem2D& problem) {
     double uValuePrev{0.0};
     double uValue{0.0};
     double stepSize{0.5};
@@ -41,6 +60,7 @@ bool MyGDAlgorithm::lookaheadForLocalMin(Eigen::Vector2d q_curr, Eigen::Vector2d
     Eigen::Vector2d q_search{0.0, 0.0};
     Eigen::Vector2d gradient{0.0, 0.0};
     int momentumSize0 = momentum.size();
+    int emaSize0 = ema.size();
 
     uValuePrev = U(q_curr, problem);
     q_next.push_back(q_curr);
@@ -51,14 +71,18 @@ bool MyGDAlgorithm::lookaheadForLocalMin(Eigen::Vector2d q_curr, Eigen::Vector2d
         } else {
             gradient = gradU(q_curr, problem);
         }
-        momentum.push_back(q_curr - (alpha * gradient));
-        q_next.push_back(momentum.back() + (beta * (momentum.back() - momentum.end()[-2])));
+        momentum.push_back((beta1 * momentum.back()) + ((1 - beta1) * gradient));
+        ema.push_back((beta2 * ema.back()) + ((1 - beta2) * gradient.dot(gradient)));
+        q_next.push_back(q_next.back() - (momentum.back() / (1 - beta1)) * (alpha / (sqrt(ema.back() / (1 - beta2)) + 0.00000001)));
+        // momentum.push_back(q_curr - (alpha * gradient));
+        // q_next.push_back(momentum.back() + (beta * (momentum.back() - momentum.end()[-2])));
 
         uValue = U(q_next.back(), problem);
 
         if ((uValuePrev - uValue) <= 0.01) {
             q_next.pop_back();
             momentum.pop_back();
+            ema.pop_back();
 
             double startAngle = atan2(-gradient.normalized()[1], -gradient.normalized()[0]);
             for (int j = 0; j < 180; j++) {
@@ -67,10 +91,14 @@ bool MyGDAlgorithm::lookaheadForLocalMin(Eigen::Vector2d q_curr, Eigen::Vector2d
                 q_search[1] = q_curr[1] + (stepSize * sin(searchAngle));
 
                 if ((U(q_search, problem) - uValuePrev) <= -0.1) {
+                    //gradient = (q_search - q_curr).normalized() * gradU(q_search, problem).norm();
                     gradient = gradU(q_search, problem);
 
-                    momentum.push_back(q_curr - (alpha * gradient));
-                    q_next.push_back(momentum.back() + (beta * (momentum.back() - momentum.end()[-2])));
+                    momentum.push_back((beta1 * momentum.back()) + ((1 - beta1) * gradient));
+                    ema.push_back((beta2 * ema.back()) + ((1 - beta2) * gradient.dot(gradient)));
+                    q_next.push_back(q_next.back() - (momentum.back() / (1 - beta1)) * (alpha / (sqrt(ema.back() / (1 - beta2)) + 0.00000001)));
+                    // momentum.push_back(q_curr - (alpha * gradient));
+                    // q_next.push_back(momentum.back() + (beta * (momentum.back() - momentum.end()[-2])));
                     break;
                 }
 
@@ -79,9 +107,11 @@ bool MyGDAlgorithm::lookaheadForLocalMin(Eigen::Vector2d q_curr, Eigen::Vector2d
                         if (i == 0) {
                             q_step = q_next.begin()[0];
                             momentum_step = momentum.begin()[momentumSize0 - 1];
+                            ema_step = ema.begin()[emaSize0 - 1];
                         } else {
                             q_step = q_next.begin()[1];
                             momentum_step = momentum.begin()[momentumSize0];
+                            ema_step = ema.begin()[emaSize0];
                         }
                         return false;
                     } else {
@@ -98,6 +128,7 @@ bool MyGDAlgorithm::lookaheadForLocalMin(Eigen::Vector2d q_curr, Eigen::Vector2d
 
     q_step = q_next.begin()[1];
     momentum_step = momentum.begin()[momentumSize0];
+    ema_step = ema.begin()[emaSize0];
     return false;
 }
 

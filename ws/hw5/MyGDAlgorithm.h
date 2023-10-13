@@ -10,7 +10,7 @@ namespace amp {
     class MyGDAlgorithm : public GDAlgorithm {
         public:
             MyGDAlgorithm() = default;
-            MyGDAlgorithm(double xi, double eta, double epsilon, double alpha, double beta) : xi(xi), eta(eta), epsilon(epsilon), alpha(alpha), beta(beta) {}
+            MyGDAlgorithm(double xi, double eta, double epsilon, double alpha, double beta1, double beta2) : xi(xi), eta(eta), epsilon(epsilon), alpha(alpha), beta1(beta1), beta2(beta2) {}
             ~MyGDAlgorithm() = default;
 
             /// @brief Solve a motion planning problem.
@@ -21,7 +21,8 @@ namespace amp {
         private:
             void setStarParams(const amp::Problem2D& problem);
             bool lookaheadForLocalMin(Eigen::Vector2d q_curr, Eigen::Vector2d& q_step, const int& stepsAhead, Eigen::Vector2d gradient0, 
-                                      std::vector<Eigen::Vector2d> momentum, Eigen::Vector2d& momentum_step, const amp::Problem2D& problem);
+                                      std::vector<Eigen::Vector2d> momentum, Eigen::Vector2d& momentum_step, 
+                                      std::vector<double> ema, double& ema_step, const amp::Problem2D& problem);
             double U(const Eigen::Vector2d& q, const amp::Problem2D& problem);
             double Uatt(const Eigen::Vector2d& q, const amp::Problem2D& problem);
             double Urepi(const Eigen::Vector2d& q, const amp::Obstacle2D& obst, int index);
@@ -36,7 +37,8 @@ namespace amp {
             double eta{1.0};
             double epsilon{0.25};
             double alpha{1.0};
-            double beta{1.0};
+            double beta1{1.0};
+            double beta2{1.0};
             double d_star_goal{1.0};
             std::vector<double> Q_star_i{1, 1.0};
     };
