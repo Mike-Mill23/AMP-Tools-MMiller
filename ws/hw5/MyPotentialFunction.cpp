@@ -22,6 +22,9 @@ MyPotentialFunction::MyPotentialFunction(double xi, double eta, double epsilon, 
         }
         Q_star_i.push_back(perimeter / (2 * numVertices));   // average side length / 2
     }
+    // for (int i = 0; i < Q_star_i.size(); i++) {
+    //     Q_star_i[i] = 0.5;
+    // }
 }
 
 double MyPotentialFunction::U(const Eigen::Vector2d& q) const {
