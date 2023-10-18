@@ -3,6 +3,8 @@
 **/__pycache__/
 *.swp
 *~
+.vscode
+.gitignore
 *.DS_Store
 .vscode
 .gitignore
