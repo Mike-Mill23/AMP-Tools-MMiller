@@ -64,8 +64,10 @@ std::unique_ptr<amp::GridCSpace2D> MyGridCSpace2DConstructor::construct(const am
 }
 
 std::pair<std::size_t, std::size_t> MyGridCSpace2D::getCellFromPoint(double x0, double x1) const {
-    std::size_t x0Index = static_cast<std::size_t>(std::floor(x0 / CELL_SIZE)) % this->size().first;
-    std::size_t x1Index = static_cast<std::size_t>(std::floor(x1 / CELL_SIZE)) % this->size().second;
+    double x0cellSize = (this->x0Bounds().second - this->x0Bounds().first) / this->size().first;
+    double x1cellSize = (this->x1Bounds().second - this->x1Bounds().first) / this->size().second;
+    std::size_t x0Index = static_cast<std::size_t>(std::floor((x0 - this->x0Bounds().first) / x0cellSize)) % this->size().first;
+    std::size_t x1Index = static_cast<std::size_t>(std::floor((x1 - this->x1Bounds().first) / x1cellSize)) % this->size().second;
     std::pair<std::size_t, std::size_t> cell{x0Index, x1Index};
     return cell;
 }

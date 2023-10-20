@@ -39,7 +39,8 @@ int main(int argc, char** argv) {
     /*-------- Exercise 2 --------*/
     {
     std::vector<double> Ex2aLinkLengths{0.5, 1.0, 0.5};
-    ManipulatorState Ex2aConfig{M_PI / 6, M_PI / 3, 7 * M_PI / 4};
+    ManipulatorState Ex2aConfig(3);
+    Ex2aConfig << M_PI / 6, M_PI / 3, 7 * M_PI / 4;
     MyLinkManipulator planarManipulator1{Ex2aLinkLengths, Ex2aConfig};
 
     HW4::checkFK(planarManipulator1.getJointLocation(Ex2aConfig, 0), 0, planarManipulator1, Ex2aConfig);
@@ -55,7 +56,8 @@ int main(int argc, char** argv) {
     /*-------- Exercise 3 --------*/
     {
     std::vector<double> linkLengths{1.0, 1.0};
-    ManipulatorState jointAngles{0.0, 0.0};
+    ManipulatorState jointAngles(2);
+    jointAngles << 0.0, 0.0;
     MyLinkManipulator planarManipulator{linkLengths, jointAngles};
 
     amp::Environment2D Ex3aEnv = HW4::getEx3Workspace1();

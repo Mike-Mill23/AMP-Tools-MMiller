@@ -1,5 +1,24 @@
 #include "CollisionDetector.h"
 
+bool collisionPointPolygon(const Eigen::Vector2d& point, const amp::Polygon& poly) {
+    bool collisionValue = true;
+    std::vector<Eigen::Vector2d> vertices = poly.verticesCCW();
+    int numVertices = vertices.size();
+
+    for (int i = 0; i < numVertices; i++) {
+        Eigen::Vector2d edge = (vertices[(i + 1) % numVertices] - vertices[i]).normalized();
+        Eigen::Vector2d normal = Eigen::Vector2d(-edge[1], edge[0]).normalized();
+        Eigen::Vector2d position = (point - vertices[i]).normalized();
+
+        if (normal.dot(position) < 0) {
+            collisionValue = false;
+            break;
+        }
+    }
+
+    return collisionValue;
+}
+
 bool collisionLineLine(const std::vector<Eigen::Vector2d>& line1, const std::vector<Eigen::Vector2d>& line2) {
     bool collisionValue = false;
     
@@ -72,4 +91,9 @@ int pointOrientation(const Eigen::Vector2d& p1,
     }
 
 	return (val > 0) ? 1 : 2;
+}
+
+double distanceL2(const Eigen::Vector2d& p1, const Eigen::Vector2d& p2) {
+    Eigen::Vector2d diff = p1 - p2;
+    return diff.norm();
 }
