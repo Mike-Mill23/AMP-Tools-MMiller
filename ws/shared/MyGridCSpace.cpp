@@ -17,7 +17,7 @@ std::unique_ptr<amp::GridCSpace2D> MyGridCSpace2DConstructor::construct(const am
     bool isCollision = false;
 
     for (int i = 0; i < numx0Cells; i++) {
-        jointAngles[0] = i * CELL_SIZE;
+        jointAngles[0] = (i * CELL_SIZE) + (CELL_SIZE / 2);
         jointLocations.push_back(manipulator.getJointLocation(jointAngles, 0));
         jointAngles[1] = 0.0;
         jointLocations.push_back(manipulator.getJointLocation(jointAngles, 1));
@@ -35,7 +35,7 @@ std::unique_ptr<amp::GridCSpace2D> MyGridCSpace2DConstructor::construct(const am
             }
         } else {
             for (int j = 0; j < numx1Cells; j++) {
-                jointAngles[1] = j * CELL_SIZE;
+                jointAngles[1] = (j * CELL_SIZE) + (CELL_SIZE / 2);
                 jointLocations.push_back(manipulator.getJointLocation(jointAngles, 2));
 
                 std::vector<Eigen::Vector2d> link2{jointLocations.begin() + 1, jointLocations.end()};
@@ -64,17 +64,12 @@ std::unique_ptr<amp::GridCSpace2D> MyGridCSpace2DConstructor::construct(const am
 }
 
 std::pair<std::size_t, std::size_t> MyGridCSpace2D::getCellFromPoint(double x0, double x1) const {
-    double x0cellSize = (this->x0Bounds().second - this->x0Bounds().first) / this->size().first;
-    double x1cellSize = (this->x1Bounds().second - this->x1Bounds().first) / this->size().second;
-    std::size_t x0Index = static_cast<std::size_t>(std::floor((x0 - this->x0Bounds().first) / x0cellSize)) % this->size().first;
-    std::size_t x1Index = static_cast<std::size_t>(std::floor((x1 - this->x1Bounds().first) / x1cellSize)) % this->size().second;
-    std::pair<std::size_t, std::size_t> cell{x0Index, x1Index};
-    return cell;
+    auto[numx0Cells, numx1Cells] = this->size();
+    auto[x0min, x0max] = this->x0Bounds();
+    auto[x1min, x1max] = this->x1Bounds();
+    double x0cellSize = (x0max - x0min) / numx0Cells;
+    double x1cellSize = (x1max - x1min) / numx1Cells;
+    std::size_t x0Index = static_cast<std::size_t>(std::floor((x0 - x0min) / x0cellSize)) % numx0Cells;
+    std::size_t x1Index = static_cast<std::size_t>(std::floor((x1 - x0min) / x1cellSize)) % numx1Cells;
+    return std::make_pair(x0Index, x1Index);
 }
-
-// bool MyGridCSpace2D::inCollision(double x0, double x1) const {
-//     int x0Index = static_cast<int>(std::floor(x0 / CELL_SIZE)) % this->size().first;
-//     int x1Index = static_cast<int>(std::floor(x1 / CELL_SIZE)) % this->size().second;
-//     bool collisionValue = (*this)(x0Index, x1Index);
-//     return collisionValue;
-// }

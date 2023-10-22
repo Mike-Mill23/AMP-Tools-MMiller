@@ -35,107 +35,108 @@ amp::Path2D MyPointWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d& q_ini
     const double cellSize{0.25};
     amp::Path2D path{};
     std::queue<std::pair<std::size_t, std::size_t>> search{};
+    std::vector<std::pair<std::size_t, std::size_t>> neighbors{};
     bool waveReachStart{false};
     unsigned int currDist{};
     auto[numx0Cells, numx1Cells] = grid_cspace.size();
-    DenseArray2D<unsigned int> waveGrid{numx0Cells, numx1Cells, 0};
+    DenseArray2D<unsigned int> waveGrid{numx0Cells, numx1Cells, 0u};
     auto[x_min, x_max] = grid_cspace.x0Bounds();
     auto[y_min, y_max] = grid_cspace.x1Bounds();
 
-    for (int i = 0; i < numx0Cells; i++) {
-        for (int j = 0; j < numx1Cells; j++) {
+    std::pair<std::size_t, std::size_t> qInitCell = grid_cspace.getCellFromPoint(q_init[0], q_init[1]);
+    std::pair<std::size_t, std::size_t> qGoalCell = grid_cspace.getCellFromPoint(q_goal[0], q_goal[1]);
+
+    for (std::size_t i = 0; i < numx0Cells; i++) {
+        for (std::size_t j = 0; j < numx1Cells; j++) {
             if (grid_cspace(i, j)) {
                 waveGrid(i, j) = 1;
-            } else {
-                waveGrid(i, j) = 0;
+                neighbors = getNeighbors(std::make_pair(i, j), numx0Cells, numx1Cells);
+                for (auto cell : neighbors) {
+                    waveGrid(cell.first, cell.second) = 1;
+                }
             }
         }
     }
+    waveGrid(qInitCell.first, qInitCell.second) = 0;
+    waveGrid(qGoalCell.first, qGoalCell.second) = 0;
 
-    search.push(grid_cspace.getCellFromPoint(q_goal[0], q_goal[1]));
+    search.push(qGoalCell);
     waveGrid(search.front().first, search.front().second) = 2;
-    std::pair<std::size_t, std::size_t> qInitCell = grid_cspace.getCellFromPoint(q_init[0], q_init[1]);
-    while (!waveReachStart) {
+    while (!waveReachStart && search.size() > 0) {
         if (search.front() == qInitCell) {
             waveReachStart = true;
         }
 
         currDist = waveGrid(search.front().first, search.front().second);
+        neighbors = getNeighbors(search.front(), numx0Cells, numx1Cells);
 
-        if (search.front().first > 0) {
-            if (waveGrid(search.front().first - 1, search.front().second) == 0) {
-                search.push(std::make_pair(search.front().first - 1, search.front().second));
-                waveGrid(search.front().first - 1, search.front().second) = currDist + 1;
-            }
-        }
-
-        if (search.front().first + 1 <= numx0Cells - 1) {
-            if (waveGrid(search.front().first + 1, search.front().second) == 0) {
-                search.push(std::make_pair(search.front().first + 1, search.front().second));
-                waveGrid(search.front().first + 1, search.front().second) = currDist + 1;
-            }
-        }
-
-        if (search.front().second > 0) {
-            if (waveGrid(search.front().first, search.front().second - 1) == 0) {
-                search.push(std::make_pair(search.front().first, search.front().second - 1));
-                waveGrid(search.front().first, search.front().second - 1) = currDist + 1;
-            }
-        }
-
-        if (search.front().second + 1 <= numx1Cells - 1) {
-            if (waveGrid(search.front().first, search.front().second + 1) == 0) {
-                search.push(std::make_pair(search.front().first, search.front().second + 1));
-                waveGrid(search.front().first, search.front().second + 1) = currDist + 1;
+        for (auto cell : neighbors) {
+            if (waveGrid(cell.first, cell.second) == 0) {
+                search.push(cell);
+                waveGrid(cell.first, cell.second) = currDist + 1;
             }
         }
 
         search.pop();
     }
 
+    bool stepped{false};
     path.waypoints.push_back(q_init);
-    auto[waveGridx, waveGridy] = grid_cspace.getCellFromPoint(path.waypoints.back()[0], path.waypoints.back()[1]);
-    while ((currDist = waveGrid(waveGridx, waveGridy)) != 2) {
-        if (waveGridx + 1 <= numx0Cells - 1) {
-            if (waveGrid(waveGridx + 1, waveGridy) < currDist && waveGrid(waveGridx + 1, waveGridy) > 1) {
-                waveGridx++;
-                path.waypoints.push_back(Eigen::Vector2d(x_min + (cellSize * waveGridx) + (cellSize / 2), 
-                                                         y_min + (cellSize * waveGridy) + (cellSize / 2)));
+    if (waveReachStart) {
+        auto[waveGridx, waveGridy] = grid_cspace.getCellFromPoint(path.waypoints.back()[0], path.waypoints.back()[1]);
+
+        while ((currDist = waveGrid(waveGridx, waveGridy)) != 2) {
+            neighbors = getNeighbors(std::make_pair(waveGridx, waveGridy), numx0Cells, numx1Cells);
+
+            stepped = false;
+            for (auto cell : neighbors) {
+                if (waveGrid(cell.first, cell.second) < currDist && waveGrid(cell.first, cell.second) > 1) {
+                    stepped = true;
+                    waveGridx = cell.first;
+                    waveGridy = cell.second;
+                    path.waypoints.push_back(Eigen::Vector2d(x_min + (cellSize * waveGridx) + (cellSize / 2), 
+                                                             y_min + (cellSize * waveGridy) + (cellSize / 2)));
+                    break;
+                }
+            }
+
+            if (stepped) {
                 continue;
+            } else {
+                break;
             }
         }
-
-        if (waveGridy + 1 <= numx1Cells - 1) {
-            if (waveGrid(waveGridx, waveGridy + 1) < currDist && waveGrid(waveGridx, waveGridy + 1) > 1) {
-                waveGridy++;
-                path.waypoints.push_back(Eigen::Vector2d(x_min + (cellSize * waveGridx) + (cellSize / 2), 
-                                                         y_min + (cellSize * waveGridy) + (cellSize / 2)));
-                continue;
-            }
-        }
-
-        if (waveGridx > 0) {
-            if (waveGrid(waveGridx - 1, waveGridy) < currDist && waveGrid(waveGridx - 1, waveGridy) > 1) {
-                waveGridx--;
-                path.waypoints.push_back(Eigen::Vector2d(x_min + (cellSize * waveGridx) + (cellSize / 2), 
-                                                         y_min + (cellSize * waveGridy) + (cellSize / 2)));
-                continue;
-            }
-        }
-
-        if (waveGridy > 0) {
-            if (waveGrid(waveGridx, waveGridy - 1) < currDist && waveGrid(waveGridx, waveGridy - 1) > 1) {
-                waveGridy--;
-                path.waypoints.push_back(Eigen::Vector2d(x_min + (cellSize * waveGridx) + (cellSize / 2), 
-                                                         y_min + (cellSize * waveGridy) + (cellSize / 2)));
-                continue;
-            }
-        }
-
-        break;
     }
 
     path.waypoints.push_back(q_goal);
+    // Visualizer::makeFigure(grid_cspace, path);
+    // Visualizer::showFigures();
 
     return path;
+}
+
+std::vector<std::pair<std::size_t, std::size_t>> MyPointWaveFrontAlgorithm::getNeighbors(const std::pair<std::size_t, std::size_t>& cell, const std::size_t& numx0Cells, const std::size_t& numx1Cells) {
+    std::vector<std::pair<std::size_t, std::size_t>> neighbors{};
+
+    // Right neighbor
+    if (cell.first + 1 < numx0Cells) {
+        neighbors.push_back(std::make_pair(cell.first + 1, cell.second));
+    }
+
+    // Up neighbor
+    if (cell.second + 1 < numx1Cells) {
+        neighbors.push_back(std::make_pair(cell.first, cell.second + 1));
+    }
+
+    // Left neighbor
+    if (cell.first > 0) {
+        neighbors.push_back(std::make_pair(cell.first - 1, cell.second));
+    }
+
+    // Down neighbor
+    if (cell.second > 0) {
+        neighbors.push_back(std::make_pair(cell.first, cell.second - 1));
+    }
+
+    return neighbors;
 }

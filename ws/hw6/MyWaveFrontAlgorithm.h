@@ -30,5 +30,8 @@ namespace amp {
         amp::Path2D planInCSpace(const Eigen::Vector2d& q_init, const Eigen::Vector2d& q_goal, const amp::GridCSpace2D& grid_cspace);
 
         /*****************************************/
+
+        private:
+            std::vector<std::pair<std::size_t, std::size_t>> getNeighbors(const std::pair<std::size_t, std::size_t>& cell, const std::size_t& numx0Cells, const std::size_t& numx1Cells);
     };
 }

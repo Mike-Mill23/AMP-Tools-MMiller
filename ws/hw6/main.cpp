@@ -14,6 +14,10 @@
 // Include headers from hw6 ws
 #include "MyWaveFrontAlgorithm.h"
 #include "MyManipulatorWaveFrontAlgorithm.h"
+#include "MyAStar.h"
+
+// Include other stdlib headers
+#include <iostream>
 
 
 using namespace amp;
@@ -22,26 +26,28 @@ int main(int argc, char** argv) {
 
     /*-------- Exercise 1 WS 1 --------*/
     {
-        // MyPointWaveFrontAlgorithm pointPlanner{};
-        // amp::Problem2D Ex1Ws1 = HW2::getWorkspace1();
-        // std::unique_ptr<amp::GridCSpace2D> gridCSpace = pointPlanner.constructDiscretizedWorkspace(Ex1Ws1);
-        // amp::Path2D path = pointPlanner.plan(Ex1Ws1);
-        // LOG("Path length: " << path.length());
-        // Visualizer::makeFigure(Ex1Ws1, path);
-        // Visualizer::makeFigure(*gridCSpace);
-        // Visualizer::showFigures();
+        MyPointWaveFrontAlgorithm pointPlanner{};
+        amp::Problem2D Ex1Ws1 = HW2::getWorkspace1();
+        std::unique_ptr<amp::GridCSpace2D> gridCSpace = pointPlanner.constructDiscretizedWorkspace(Ex1Ws1);
+        amp::Path2D path = pointPlanner.plan(Ex1Ws1);
+        LOG("Path length: " << path.length());
+        Visualizer::makeFigure(Ex1Ws1, path);
+        Visualizer::makeFigure(*gridCSpace);
+        Visualizer::showFigures();
+        HW6::checkPointAgentPlan(path, Ex1Ws1);
     }
 
     /*-------- Exercise 1 WS 2 --------*/
     {
-        // MyPointWaveFrontAlgorithm pointPlanner{};
-        // amp::Problem2D Ex1Ws2 = HW2::getWorkspace2();
-        // std::unique_ptr<amp::GridCSpace2D> gridCSpace = pointPlanner.constructDiscretizedWorkspace(Ex1Ws2);
-        // amp::Path2D path = pointPlanner.plan(Ex1Ws2);
-        // LOG("Path length: " << path.length());
-        // Visualizer::makeFigure(Ex1Ws2, path);
-        // Visualizer::makeFigure(*gridCSpace);
-        // Visualizer::showFigures();
+        MyPointWaveFrontAlgorithm pointPlanner{};
+        amp::Problem2D Ex1Ws2 = HW2::getWorkspace2();
+        std::unique_ptr<amp::GridCSpace2D> gridCSpace = pointPlanner.constructDiscretizedWorkspace(Ex1Ws2);
+        amp::Path2D path = pointPlanner.plan(Ex1Ws2);
+        LOG("Path length: " << path.length());
+        Visualizer::makeFigure(Ex1Ws2, path);
+        Visualizer::makeFigure(*gridCSpace);
+        Visualizer::showFigures();
+        HW6::checkPointAgentPlan(path, Ex1Ws2);
     }
 
     /*-------- Exercise 2 Ws 1 --------*/
@@ -54,7 +60,7 @@ int main(int argc, char** argv) {
         std::unique_ptr<GridCSpace2D> cSpace = gridCtor->construct(manipulator, Ex2Ws1);
         MyManipulatorWaveFrontAlgorithm manipulatorPlanner{gridCtor};
         amp::Path2D path = manipulatorPlanner.plan(manipulator, Ex2Ws1);
-        Visualizer::makeFigure(*cSpace, path);
+        HW6::checkLinkManipulatorPlan(path, manipulator, Ex2Ws1);
         Visualizer::makeFigure(Ex2Ws1, manipulator, path);
         Visualizer::showFigures();
     }
@@ -69,7 +75,7 @@ int main(int argc, char** argv) {
         std::unique_ptr<GridCSpace2D> cSpace = gridCtor->construct(manipulator, Ex2Ws2);
         MyManipulatorWaveFrontAlgorithm manipulatorPlanner{gridCtor};
         amp::Path2D path = manipulatorPlanner.plan(manipulator, Ex2Ws2);
-        Visualizer::makeFigure(*cSpace, path);
+        HW6::checkLinkManipulatorPlan(path, manipulator, Ex2Ws2);
         Visualizer::makeFigure(Ex2Ws2, manipulator, path);
         Visualizer::showFigures();
     }
@@ -84,18 +90,37 @@ int main(int argc, char** argv) {
         std::unique_ptr<GridCSpace2D> cSpace = gridCtor->construct(manipulator, Ex2Ws3);
         MyManipulatorWaveFrontAlgorithm manipulatorPlanner{gridCtor};
         amp::Path2D path = manipulatorPlanner.plan(manipulator, Ex2Ws3);
-        Visualizer::makeFigure(*cSpace, path);
+        HW6::checkLinkManipulatorPlan(path, manipulator, Ex2Ws3);
         Visualizer::makeFigure(Ex2Ws3, manipulator, path);
         Visualizer::showFigures();
     }
 
     /*-------- Exercise 3 --------*/
     {
-        
+        amp::ShortestPathProblem Ex3Graph = HW6::getEx3SPP();
+        amp::LookupSearchHeuristic Ex3Heuristic = HW6::getEx3Heuristic();
+        MyAStar aStarAlgo{};
+        MyAStar::GraphSearchResult result = aStarAlgo.search(Ex3Graph, Ex3Heuristic);
+        LOG("Found Goal?: " << result.success);
+        LOG("Path Cost: " << result.path_cost);
+        LOG("Node Path: ");
+        for (auto n : result.node_path) {
+            std::cout << n << " ";
+        }
+        std::cout << std::endl;
     }
 
-    // Grade method
-    // amp::HW6::grade(gradAlgo, "michael.miller-5@colorado.edu", argc, argv);
+    /*-------- Grading --------*/
+    {
+        MyPointWaveFrontAlgorithm pointPlanner{};
+
+        std::shared_ptr<MyGridCSpace2DConstructor> gridCtor = std::make_shared<MyGridCSpace2DConstructor>();
+        MyManipulatorWaveFrontAlgorithm manipulatorPlanner{gridCtor};
+
+        MyAStar aStarAlgo{};
+
+        amp::HW6::grade(pointPlanner, manipulatorPlanner, aStarAlgo, "michael.miller-5@colorado.edu", argc, argv);
+    }
     
     return 0;
 }
