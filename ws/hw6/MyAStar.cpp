@@ -91,7 +91,7 @@ amp::AStar::GraphSearchResult MyAStar::search(const amp::ShortestPathProblem& pr
         result.path_cost = -1.0;
     }
 
-    // LOG("Number of Iterations: " << iterCount);
+    LOG("Number of Iterations: " << iterCount);
 
     return result;
 }

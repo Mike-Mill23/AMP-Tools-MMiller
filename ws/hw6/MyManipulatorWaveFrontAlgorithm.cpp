@@ -98,8 +98,8 @@ amp::Path2D MyManipulatorWaveFrontAlgorithm::planInCSpace(const Eigen::Vector2d&
     path.waypoints.push_back(q_goalMod);
     // Uncomment to see CSpace path
     // path.print();
-    // Visualizer::makeFigure(grid_cspace, path);
-    // Visualizer::showFigures();
+    Visualizer::makeFigure(grid_cspace, path);
+    Visualizer::showFigures();
     unwrapPath(path, Eigen::Vector2d(x_min, y_min), Eigen::Vector2d(x_max, y_max));
 
     return path;

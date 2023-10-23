@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
         amp::Path2D path = pointPlanner.plan(Ex1Ws1);
         LOG("Path length: " << path.length());
         Visualizer::makeFigure(Ex1Ws1, path);
-        Visualizer::makeFigure(*gridCSpace);
+        // Visualizer::makeFigure(*gridCSpace);
         Visualizer::showFigures();
         HW6::checkPointAgentPlan(path, Ex1Ws1);
     }
@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
         amp::Path2D path = pointPlanner.plan(Ex1Ws2);
         LOG("Path length: " << path.length());
         Visualizer::makeFigure(Ex1Ws2, path);
-        Visualizer::makeFigure(*gridCSpace);
+        // Visualizer::makeFigure(*gridCSpace);
         Visualizer::showFigures();
         HW6::checkPointAgentPlan(path, Ex1Ws2);
     }
@@ -97,10 +97,22 @@ int main(int argc, char** argv) {
 
     /*-------- Exercise 3 --------*/
     {
+        // A*
         amp::ShortestPathProblem Ex3Graph = HW6::getEx3SPP();
         amp::LookupSearchHeuristic Ex3Heuristic = HW6::getEx3Heuristic();
         MyAStar aStarAlgo{};
         MyAStar::GraphSearchResult result = aStarAlgo.search(Ex3Graph, Ex3Heuristic);
+        LOG("Found Goal?: " << result.success);
+        LOG("Path Cost: " << result.path_cost);
+        LOG("Node Path: ");
+        for (auto n : result.node_path) {
+            std::cout << n << " ";
+        }
+        std::cout << std::endl;
+
+        // Dijkstra's
+        amp::SearchHeuristic dijkstra{};
+        result = aStarAlgo.search(Ex3Graph, dijkstra);
         LOG("Found Goal?: " << result.success);
         LOG("Path Cost: " << result.path_cost);
         LOG("Node Path: ");
