@@ -9,6 +9,9 @@
 .vscode
 .gitignore
 
+# Ignore KDTree git
+ws/shared/KDTree
+
 # Ignore auto-generated scripts
 /build_and_run.sh
 /.env.sh
