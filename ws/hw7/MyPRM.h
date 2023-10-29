@@ -1,7 +1,7 @@
 #pragma once
 
 #include "AMPCore.h"
-// #include "hw/HW7.h"
+#include "hw/HW7.h"
 #include "CollisionDetector.h"
 #include "KDTree.hpp"
 #include "MyAStar.h"
@@ -13,7 +13,7 @@
 #include <math.h>
 
 namespace amp {
-    class MyPRM : public PointMotionPlanner2D {
+    class MyPRM : public PRM2D {
         public:
             struct PRMResult {
                 std::shared_ptr<Graph<double>> roadmap{};
@@ -45,6 +45,5 @@ namespace amp {
             unsigned int nSamples{0};
             double neighborRadius{1.0};
             bool pathSmoothing{false};
-            // int planNum{1};
     };
 }

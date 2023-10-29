@@ -46,6 +46,7 @@ amp::Path2D MyPRM::plan(const amp::Problem2D& problem) {
     }
     compTimeDataSet.push_back(result.compTime);
 
+    // Uncomment for Roadmap and Path plotting
     // LOG("Path Length: " << result.pathLength);
     // LOG("Computation Time: " << result.compTime);
     // printf("\n");
