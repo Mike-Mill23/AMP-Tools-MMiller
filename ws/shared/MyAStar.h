@@ -60,4 +60,18 @@ namespace amp {
         private:
             std::map<amp::Node, double> heuristicValues;
     };
+
+    class CentralizedRRTSearchHeuristic : public SearchHeuristic {
+        public:
+            CentralizedRRTSearchHeuristic(const amp::ShortestPathProblem& problem, std::unique_ptr<std::vector<std::vector<double>>>& sampledPoints);
+            ~CentralizedRRTSearchHeuristic() = default;
+
+            /// @brief Get the heuristic value stored in `heuristicValues`. 
+            /// @param node Node to get the heuristic value h(node) for. 
+            /// @return Heuristic value
+            double operator()(amp::Node node) const { return heuristicValues.at(node); }
+
+        private:
+            std::map<amp::Node, double> heuristicValues;
+    };
 }

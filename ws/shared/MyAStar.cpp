@@ -115,3 +115,20 @@ RRTSearchHeuristic::RRTSearchHeuristic(const amp::ShortestPathProblem& problem, 
         heuristicValues.insert({i, distToGoal});
     }
 }
+
+// Heuristic is sum of L2 distances from node to goal node in the workspace for each agent
+CentralizedRRTSearchHeuristic::CentralizedRRTSearchHeuristic(const amp::ShortestPathProblem& problem, std::unique_ptr<std::vector<std::vector<double>>>& sampledPoints) {
+    Eigen::VectorXd q_goal = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(sampledPoints->at(problem.goal_node).data(), sampledPoints->at(problem.goal_node).size());
+    int numConfigs = sampledPoints->at(problem.goal_node).size();
+
+    for (int i = 0; i < sampledPoints->size(); i++) {
+        double distToGoal{0.0};
+        for (int j = 0; j < numConfigs; j += 2) {
+            Eigen::Vector2d agentPoint(sampledPoints->at(i)[j], sampledPoints->at(i)[j + 1]);
+            Eigen::Vector2d goalPoint(q_goal[j], q_goal[j + 1]);
+            distToGoal += distanceL2(agentPoint, goalPoint);
+        }
+
+        heuristicValues.insert({i, distToGoal});
+    }
+}
