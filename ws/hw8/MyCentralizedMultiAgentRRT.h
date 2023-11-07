@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <algorithm>
+#include <chrono>
 #define _USE_MATH_DEFINES
 #include <math.h>
 
@@ -35,6 +36,7 @@ namespace amp {
                                        : nSamples(n), stepSize(r), goalProb(goalProb), epsilon(epsilon) {}
             ~MyCentralizedMultiAgentRRT() = default;
 
+            int numValidSolutions{0};
             std::vector<double> treeSizeDataSet{};
             std::vector<double> compTimeDataSet{};
 
@@ -45,5 +47,6 @@ namespace amp {
             double stepSize{1.0};
             double goalProb{0.05};
             double epsilon{0.25};
+            int planNum{0};
     };
 }
