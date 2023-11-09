@@ -3,8 +3,6 @@
 #include "AMPCore.h"
 #include "hw/HW8.h"
 #include "CollisionDetector.h"
-#include "KDTree.hpp"
-#include "MyAStar.h"
 
 #include <random>
 #include <string.h>
@@ -19,12 +17,12 @@ namespace amp {
         public:
             struct CentralizedMultiAgentRRTResult {
                 std::shared_ptr<Graph<double>> roadmap{};
-                std::unique_ptr<pointVec> sampledPoints{};
+                std::unique_ptr<std::vector<Eigen::VectorXd>> sampledPoints{};
                 amp::MultiAgentPath2D path{};
                 double treeSize{};
                 double compTime{};
 
-                Eigen::VectorXd operator()(amp::Node& node) const { return Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(sampledPoints->at(node).data(), sampledPoints->at(node).size()); }
+                Eigen::VectorXd operator()(amp::Node& node) const { return sampledPoints->at(node); }
             };
 
             /// @brief Solve a motion planning problem.
@@ -37,11 +35,14 @@ namespace amp {
             ~MyCentralizedMultiAgentRRT() = default;
 
             int numValidSolutions{0};
+            int resultsFound{0};
             std::vector<double> treeSizeDataSet{};
             std::vector<double> compTimeDataSet{};
 
         private:
-            void createTree(const amp::MultiAgentProblem2D& problem, MyCentralizedMultiAgentRRT::CentralizedMultiAgentRRTResult& result);
+            void createTree(const amp::MultiAgentProblem2D& problem, MyCentralizedMultiAgentRRT::CentralizedMultiAgentRRTResult& result, bool& resultFound);
+            bool checkObstacleCollisions(const amp::MultiAgentProblem2D& problem, const Eigen::VectorXd& q_near, const Eigen::VectorXd& q_new, const int& agentNum);
+            bool checkRobotCollisions(const amp::MultiAgentProblem2D& problem, const Eigen::VectorXd& q_near, const Eigen::VectorXd& q_new, const int& agentNum);
 
             unsigned int nSamples{0};
             double stepSize{1.0};

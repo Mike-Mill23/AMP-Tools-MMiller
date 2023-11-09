@@ -4,34 +4,33 @@ using namespace amp;
 
 
 amp::MultiAgentPath2D MyCentralizedMultiAgentRRT::plan(const amp::MultiAgentProblem2D& problem) {
+    // LOG("Plan Num: " << planNum);
+    // planNum++;
+
     auto start = std::chrono::high_resolution_clock::now();
     CentralizedMultiAgentRRTResult result{};
-
-    LOG("Plan Num: " << planNum);
-    planNum++;
+    bool resultFound{false};
 
     for (int i = 0; i < problem.numAgents(); i++) {
         result.path.agent_paths.push_back(Path2D());
     }
 
-    createTree(problem, result);
+    createTree(problem, result, resultFound);
 
-    ShortestPathProblem centralizedRRTProblem{};
-    centralizedRRTProblem.graph = result.roadmap;
-    centralizedRRTProblem.init_node = 0;
-    centralizedRRTProblem.goal_node = result.sampledPoints->size() - 1;
-
-    CentralizedRRTSearchHeuristic heuristic{centralizedRRTProblem, result.sampledPoints};
-
-    MyAStar aStar{};
-    MyAStar::GraphSearchResult nodePath = aStar.search(centralizedRRTProblem, heuristic);
-
-    if (nodePath.success) {
-        numValidSolutions++;
-        for (auto n : nodePath.node_path) {
-            Eigen::VectorXd nodeConfigs = result(n);
+    if (resultFound) {
+        resultsFound++;
+        Eigen::VectorXd config{};
+        Node parentNode = result.sampledPoints->size() - 1;
+        while (1) {
+            config = result(parentNode);
             for (int i = 0; i < problem.numAgents(); i++) {
-                result.path.agent_paths[i].waypoints.push_back(Eigen::Vector2d(nodeConfigs[2 * i], nodeConfigs[(2 * i) + 1]));
+                result.path.agent_paths[i].waypoints.insert(result.path.agent_paths[i].waypoints.begin(), Eigen::Vector2d(config[2 * i], config[(2 * i) + 1]));
+            }
+
+            if (parentNode == 0) {
+                break;
+            } else {
+                parentNode = result.roadmap->parents(parentNode)[0];
             }
         }
     } else {
@@ -48,6 +47,17 @@ amp::MultiAgentPath2D MyCentralizedMultiAgentRRT::plan(const amp::MultiAgentProb
     compTimeDataSet.push_back(result.compTime);
     treeSizeDataSet.push_back(result.treeSize);
 
+    std::vector<std::vector<Eigen::Vector2d>> collisions{};
+    if (HW8::check(result.path, problem, collisions, false)) {
+        numValidSolutions++;
+    } else {
+        if (resultFound && collisions.size() > 0) {
+            LOG("Path Collision!");
+            Visualizer::makeFigure(problem, result.path, collisions);
+            Visualizer::showFigures();
+        }
+    }
+
     // Uncomment for Roadmap and Path plotting
     // LOG("Tree Size: " << result.treeSize);
     // LOG("Computation Time: " << result.compTime);
@@ -59,12 +69,13 @@ amp::MultiAgentPath2D MyCentralizedMultiAgentRRT::plan(const amp::MultiAgentProb
     return result.path;
 }
 
-void MyCentralizedMultiAgentRRT::createTree(const amp::MultiAgentProblem2D& problem, MyCentralizedMultiAgentRRT::CentralizedMultiAgentRRTResult& result) {
-    result.sampledPoints = std::make_unique<pointVec>();
+void MyCentralizedMultiAgentRRT::createTree(const amp::MultiAgentProblem2D& problem, MyCentralizedMultiAgentRRT::CentralizedMultiAgentRRTResult& result, bool& resultFound) {
+    result.sampledPoints = std::make_unique<std::vector<Eigen::VectorXd>>();
     result.roadmap = std::make_shared<amp::Graph<double>>();
     bool isCollision{false};
     std::vector<double> configs{};
     int numSubdivisions{4};
+    resultFound = false;
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -72,17 +83,15 @@ void MyCentralizedMultiAgentRRT::createTree(const amp::MultiAgentProblem2D& prob
     std::uniform_real_distribution<> disy(problem.y_min, problem.y_max);
     std::uniform_real_distribution<> prob(0.0, 1.0);
 
-    point_t qInit{};
     for (auto agent : problem.agent_properties) {
-        qInit.push_back(agent.q_init[0]);
-        qInit.push_back(agent.q_init[1]);
+        configs.push_back(agent.q_init[0]);
+        configs.push_back(agent.q_init[1]);
     }
+    Eigen::VectorXd qInit = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(configs.data(), configs.size());
 
     result.sampledPoints->push_back(qInit);
 
     for (int i = 0; i < nSamples; i++) {
-        KDTree mapTree{*(result.sampledPoints)};
-
         double goalSample = prob(gen);
         if (goalSample <= goalProb) {
             for (auto agent : problem.agent_properties) {
@@ -96,10 +105,19 @@ void MyCentralizedMultiAgentRRT::createTree(const amp::MultiAgentProblem2D& prob
             }
         }
 
-        point_t nearestPoint = mapTree.nearest_point(configs);
-        Eigen::VectorXd q_near = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(nearestPoint.data(), nearestPoint.size());
+        double closestNodeNorm{std::numeric_limits<double>::max()};
+        double checkNodeNorm{0.0};
+        Eigen::VectorXd q_near{};
+        Eigen::VectorXd q_check{};
         Eigen::VectorXd q_rand = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(configs.data(), configs.size());
-        // Eigen::VectorXd q_new = q_near + (stepSize * (q_rand - q_near).normalized());
+        for (int j = 0; j < result.sampledPoints->size(); j++) {
+            q_check = result.sampledPoints->at(j);
+            if ((checkNodeNorm = (q_rand - q_check).norm()) < closestNodeNorm) {
+                q_near = q_check;
+                closestNodeNorm = checkNodeNorm;
+            }
+        }
+
         Eigen::VectorXd q_new(2 * problem.numAgents());
         for (int j = 0; j < q_new.size(); j += 2) {
             Eigen::Vector2d q_near2d{q_near[j], q_near[j + 1]};
@@ -117,95 +135,14 @@ void MyCentralizedMultiAgentRRT::createTree(const amp::MultiAgentProblem2D& prob
         }
 
         for (int j = 0; j < problem.numAgents(); j++) {
-            isCollision = false;
-            Eigen::Vector2d agentCenter{q_new[2 * j], q_new[(2 * j) + 1]};
-            Eigen::Vector2d nearCenter{q_near[2 * j], q_near[(2 * j) + 1]};
-            Eigen::Vector2d direction = agentCenter - nearCenter;
-
-            for (auto obstacle : problem.obstacles) {
-                Eigen::Vector2d c{0.0, 0.0};
-                double distToObs = d_iq(agentCenter, obstacle, c);
-
-                if (distToObs <= problem.agent_properties[j].radius) {
-                    isCollision = true;
-                    break;
-                } else if (distToObs <= distanceL2(agentCenter, nearCenter) + problem.agent_properties[j].radius) {
-                    for (int m = 0; m < numSubdivisions; m++) {
-                        int numPoints = pow(2, m);
-                        double fraction = 1.0 / (2 * numPoints);
-                        for (int n = 0; n < numPoints; n++) {
-                            Eigen::Vector2d subPoint = nearCenter + (direction * (fraction + (2 * n * fraction)));
-                            distToObs = d_iq(subPoint, obstacle, c);
-                            if (distToObs <= problem.agent_properties[j].radius) {
-                                isCollision = true;
-                                break;
-                            }
-                        }
-
-                        if (isCollision) {
-                            break;
-                        }
-                    }
-
-                    if (isCollision) {
-                        break;
-                    }
-                }
-            }
-
+            isCollision = checkObstacleCollisions(problem, q_near, q_new, j);
             if (isCollision) {
                 break;
             } else {
-                for (int k = j + 1; k < problem.numAgents(); k++) {
-                    Eigen::Vector2d agentkCenter{q_new[2 * k], q_new[(2 * k) + 1]};
-                    Eigen::Vector2d nearkCenter{q_near[2 * k], q_near[(2 * k) + 1]};
-                    Eigen::Vector2d directionk = agentkCenter - nearkCenter;
-
-                    double agentCenterDist = distanceL2(agentCenter, agentkCenter);
-                    double sumRadii = problem.agent_properties[j].radius + problem.agent_properties[k].radius;
-                    if (agentCenterDist <= 1.1 * sumRadii) {
-                        isCollision = true;
-                        break;
-                    } else if (distanceL2(nearCenter, agentkCenter) <= distanceL2(agentCenter, nearCenter) + problem.agent_properties[j].radius) {
-                        agentCenterDist = distanceL2(nearCenter, agentkCenter);
-                        if (agentCenterDist <= 1.1 * sumRadii) {
-                            isCollision = true;
-                            break;
-                        }
-
-                        agentCenterDist = distanceL2(nearkCenter, agentCenter);
-                        if (agentCenterDist <= 1.1 * sumRadii) {
-                            isCollision = true;
-                            break;
-                        }
-
-                        for (int m = 0; m < numSubdivisions; m++) {
-                            int numPoints = pow(2, m);
-                            double fraction = 1.0 / (2 * numPoints);
-                            for (int n = 0; n < numPoints; n++) {
-                                Eigen::Vector2d subPoint = nearCenter + (direction * (fraction + (2 * n * fraction)));
-                                Eigen::Vector2d subkPoint = nearkCenter + (directionk * (fraction + (2 * n * fraction)));
-                                agentCenterDist = distanceL2(subPoint, subkPoint);
-                                if (agentCenterDist <= 1.1 * sumRadii) {
-                                    isCollision = true;
-                                    break;
-                                }
-                            }
-
-                            if (isCollision) {
-                                break;
-                            }
-                        }
-
-                        if (isCollision) {
-                            break;
-                        }
-                    }
+                isCollision = checkRobotCollisions(problem, q_near, q_new, j);
+                if (isCollision) {
+                    break;
                 }
-            }
-
-            if (isCollision) {
-                break;
             }
         }
 
@@ -214,8 +151,8 @@ void MyCentralizedMultiAgentRRT::createTree(const amp::MultiAgentProblem2D& prob
             for (int j = 0; j < q_new.size(); j += 2) {
                 graphDist += distanceL2(Eigen::Vector2d(q_near[j], q_near[j + 1]), Eigen::Vector2d(q_new[j], q_new[j + 1]));
             }
-            result.sampledPoints->push_back(point_t{q_new.data(), q_new.data() + q_new.size()});
-            uint32_t nearIndex = static_cast<Node>(std::find(result.sampledPoints->begin(), result.sampledPoints->end(), nearestPoint) - result.sampledPoints->begin());
+            result.sampledPoints->push_back(q_new);
+            uint32_t nearIndex = static_cast<Node>(std::find(result.sampledPoints->begin(), result.sampledPoints->end(), q_near) - result.sampledPoints->begin());
             uint32_t newIndex = static_cast<Node>(result.sampledPoints->size() - 1);
             result.roadmap->connect(nearIndex, newIndex, graphDist);
 
@@ -231,15 +168,17 @@ void MyCentralizedMultiAgentRRT::createTree(const amp::MultiAgentProblem2D& prob
             }
 
             if (atGoal) {
-                point_t qGoal{};
+                resultFound = true;
+                configs.clear();
                 for (auto agent : problem.agent_properties) {
-                    qGoal.push_back(agent.q_goal[0]);
-                    qGoal.push_back(agent.q_goal[1]);
+                    configs.push_back(agent.q_goal[0]);
+                    configs.push_back(agent.q_goal[1]);
                 }
+                Eigen::VectorXd qGoal = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(configs.data(), configs.size());
                 result.sampledPoints->push_back(qGoal);
                 uint32_t goalIndex = static_cast<Node>(result.sampledPoints->size() - 1);
                 result.roadmap->connect(newIndex, goalIndex, goalDist);
-                break;
+                return;
             }
         }
 
@@ -247,4 +186,78 @@ void MyCentralizedMultiAgentRRT::createTree(const amp::MultiAgentProblem2D& prob
     }
 
     return;
+}
+
+bool MyCentralizedMultiAgentRRT::checkObstacleCollisions(const amp::MultiAgentProblem2D& problem, const Eigen::VectorXd& q_near, const Eigen::VectorXd& q_new, const int& agentNum) {
+    int numSubdivisions{6};
+    Eigen::Vector2d agentCenter{q_new[2 * agentNum], q_new[(2 * agentNum) + 1]};
+    Eigen::Vector2d nearCenter{q_near[2 * agentNum], q_near[(2 * agentNum) + 1]};
+    Eigen::Vector2d direction = agentCenter - nearCenter;
+
+    for (auto obstacle : problem.obstacles) {
+        Eigen::Vector2d c{0.0, 0.0};
+        double distToObs = d_iq(agentCenter, obstacle, c);
+
+        if (distToObs <= problem.agent_properties[agentNum].radius) {
+            return true;
+        } else if (distToObs <= distanceL2(agentCenter, nearCenter) + problem.agent_properties[agentNum].radius) {
+            for (int m = 0; m < numSubdivisions; m++) {
+                int numPoints = pow(2, m);
+                double fraction = 1.0 / (2 * numPoints);
+                for (int n = 0; n < numPoints; n++) {
+                    Eigen::Vector2d subPoint = nearCenter + (direction * (fraction + (2 * n * fraction)));
+                    distToObs = d_iq(subPoint, obstacle, c);
+                    if (distToObs <= problem.agent_properties[agentNum].radius) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+bool MyCentralizedMultiAgentRRT::checkRobotCollisions(const amp::MultiAgentProblem2D& problem, const Eigen::VectorXd& q_near, const Eigen::VectorXd& q_new, const int& agentNum) {
+    int numSubdivisions{6};
+    Eigen::Vector2d agentCenter{q_new[2 * agentNum], q_new[(2 * agentNum) + 1]};
+    Eigen::Vector2d nearCenter{q_near[2 * agentNum], q_near[(2 * agentNum) + 1]};
+    Eigen::Vector2d direction = agentCenter - nearCenter;
+    
+    for (int k = agentNum + 1; k < problem.numAgents(); k++) {
+        Eigen::Vector2d agentkCenter{q_new[2 * k], q_new[(2 * k) + 1]};
+        Eigen::Vector2d nearkCenter{q_near[2 * k], q_near[(2 * k) + 1]};
+        Eigen::Vector2d directionk = agentkCenter - nearkCenter;
+
+        double agentCenterDist = distanceL2(agentCenter, agentkCenter);
+        double sumRadii = problem.agent_properties[agentNum].radius + problem.agent_properties[k].radius;
+        if (agentCenterDist <= 1.1 * sumRadii) {
+            return true;
+        } else if (distanceL2(nearCenter, agentkCenter) <= distanceL2(agentCenter, nearCenter) + problem.agent_properties[agentNum].radius) {
+            agentCenterDist = distanceL2(nearCenter, agentkCenter);
+            if (agentCenterDist <= 1.1 * sumRadii) {
+                return true;
+            }
+
+            agentCenterDist = distanceL2(nearkCenter, agentCenter);
+            if (agentCenterDist <= 1.1 * sumRadii) {
+                return true;
+            }
+
+            for (int m = 0; m < numSubdivisions; m++) {
+                int numPoints = pow(2, m);
+                double fraction = 1.0 / (2 * numPoints);
+                for (int n = 0; n < numPoints; n++) {
+                    Eigen::Vector2d subPoint = nearCenter + (direction * (fraction + (2 * n * fraction)));
+                    Eigen::Vector2d subkPoint = nearkCenter + (directionk * (fraction + (2 * n * fraction)));
+                    agentCenterDist = distanceL2(subPoint, subkPoint);
+                    if (agentCenterDist <= 1.1 * sumRadii) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
 }

@@ -12,6 +12,7 @@
 
 // Include headers from hw ws
 #include "MyCentralizedMultiAgentRRT.h"
+#include "MyDecentralizedMultiAgentRRT.h"
 
 // Include other stdlib headers
 #include <iostream>
@@ -68,73 +69,101 @@ int main(int argc, char** argv) {
 
     /*-------- Exercise 1(d) --------*/
     {
-        std::list<std::vector<double>> treeSizeDataSet{};
-        std::list<std::vector<double>> compTimeDataSet{};
-        std::vector<std::string> dataSetLabels{"m = 3", "m = 4", "m = 5", "m = 6"};
+        // std::list<std::vector<double>> treeSizeDataSet{};
+        // std::list<std::vector<double>> compTimeDataSet{};
+        // std::vector<std::string> dataSetLabels{"m = 3", "m = 4", "m = 5", "m = 6"};
 
-        std::vector<int> benchmarks{3, 4, 5, 6};
+        // std::vector<int> benchmarks{3, 4, 5, 6};
 
-        unsigned int n{7500};
-        double r{0.5};
-        double goalProb{0.05};
-        double epsilon{0.25};
+        // unsigned int n{7500};
+        // double r{0.5};
+        // double goalProb{0.05};
+        // double epsilon{0.25};
 
-        bool plotPath{true};
+        // bool plotPath{true};
 
-        for (auto benchmark : benchmarks) {
-            MyCentralizedMultiAgentRRT multiPlanner{n, r, goalProb, epsilon};
-            MultiAgentProblem2D hw8ws1 = HW8::getWorkspace1(benchmark);
-            plotPath = true;
-            for (int i = 0; i < 100; i++) {
-                amp::MultiAgentPath2D path = multiPlanner.plan(hw8ws1);
-                if (HW8::check(path, hw8ws1, false) && plotPath) {
-                    Visualizer::makeFigure(hw8ws1, path);
-                    Visualizer::showFigures();
-                    plotPath = false;
-                }
-            }
+        // for (auto benchmark : benchmarks) {
+        //     MyCentralizedMultiAgentRRT multiPlanner{n, r, goalProb, epsilon};
+        //     MultiAgentProblem2D hw8ws1 = HW8::getWorkspace1(benchmark);
+        //     // plotPath = true;
+        //     for (int i = 0; i < 100; i++) {
+        //         multiPlanner.plan(hw8ws1);
+        //         // amp::MultiAgentPath2D path = multiPlanner.plan(hw8ws1);
+        //         // if (HW8::check(path, hw8ws1, false) && plotPath) {
+        //         //     Visualizer::makeFigure(hw8ws1, path);
+        //         //     Visualizer::showFigures();
+        //         //     plotPath = false;
+        //         // }
+        //     }
+        //     LOG("resultsFound: " << multiPlanner.resultsFound);
+        //     LOG("numValidSolutions: " << multiPlanner.numValidSolutions);
+        //     treeSizeDataSet.push_back(multiPlanner.treeSizeDataSet);
+        //     compTimeDataSet.push_back(multiPlanner.compTimeDataSet);
+        // }
 
-            treeSizeDataSet.push_back(multiPlanner.treeSizeDataSet);
-            compTimeDataSet.push_back(multiPlanner.compTimeDataSet);
-        }
-
-        Visualizer::makeBoxPlot(treeSizeDataSet, dataSetLabels, "Tree Sizes for Centralized Multi Agent RRT", "Number of Agents, m", "Tree Size [num. nodes]");
-        Visualizer::makeBoxPlot(compTimeDataSet, dataSetLabels, "Computation Times for Centralized Multi Agent RRT", "Number of Agents, m", "Computation Time [ms]");
-        Visualizer::showFigures();
+        // Visualizer::makeBoxPlot(treeSizeDataSet, dataSetLabels, "Tree Sizes for Centralized Multi Agent RRT", "Number of Agents, m", "Tree Size [num. nodes]");
+        // Visualizer::makeBoxPlot(compTimeDataSet, dataSetLabels, "Computation Times for Centralized Multi Agent RRT", "Number of Agents, m", "Computation Time [ms]");
+        // Visualizer::showFigures();
     }
 
     /*-------- Exercise 1(e) --------*/
     {
-        std::vector<double> avgTreeSizes{};
-        std::vector<double> avgCompTimes{};
-        std::vector<std::string> dataSetLabels{"m = 1", "m = 2", "m = 3", "m = 4", "m = 5", "m = 6"};
+        // std::vector<double> avgTreeSizes{};
+        // std::vector<double> avgCompTimes{};
+        // std::vector<std::string> dataSetLabels{"m = 1", "m = 2", "m = 3", "m = 4", "m = 5", "m = 6"};
 
-        std::vector<int> benchmarks{1, 2, 3, 4, 5, 6};
+        // std::vector<int> benchmarks{1, 2, 3, 4, 5, 6};
 
-        unsigned int n{7500};
-        double r{0.5};
-        double goalProb{0.05};
-        double epsilon{0.25};
+        // unsigned int n{7500};
+        // double r{0.5};
+        // double goalProb{0.05};
+        // double epsilon{0.25};
 
-        for (auto benchmark : benchmarks) {
-            MyCentralizedMultiAgentRRT multiPlanner{n, r, goalProb, epsilon};
-            MultiAgentProblem2D hw8ws1 = HW8::getWorkspace1(benchmark);
-            for (int i = 0; i < 100; i++) {
-                multiPlanner.plan(hw8ws1);
-            }
+        // for (auto benchmark : benchmarks) {
+        //     MyCentralizedMultiAgentRRT multiPlanner{n, r, goalProb, epsilon};
+        //     MultiAgentProblem2D hw8ws1 = HW8::getWorkspace1(benchmark);
+        //     for (int i = 0; i < 100; i++) {
+        //         multiPlanner.plan(hw8ws1);
+        //     }
 
-            treeSizeDataSet.push_back(multiPlanner.treeSizeDataSet);
-            compTimeDataSet.push_back(multiPlanner.compTimeDataSet);
-        }
+        //     avgTreeSizes.push_back(std::accumulate(multiPlanner.treeSizeDataSet.begin(), multiPlanner.treeSizeDataSet.end(), 0.0) / multiPlanner.treeSizeDataSet.size());
+        //     avgCompTimes.push_back(std::accumulate(multiPlanner.compTimeDataSet.begin(), multiPlanner.compTimeDataSet.end(), 0.0) / multiPlanner.compTimeDataSet.size());
+        // }
 
-        Visualizer::makeBoxPlot(treeSizeDataSet, dataSetLabels, "Tree Sizes for Centralized Multi Agent RRT", "Number of Agents, m", "Tree Size [num. nodes]");
-        Visualizer::makeBoxPlot(compTimeDataSet, dataSetLabels, "Computation Times for Centralized Multi Agent RRT", "Number of Agents, m", "Computation Time [ms]");
-        Visualizer::showFigures();
+        // Visualizer::makeBarGraph(avgTreeSizes, dataSetLabels, "Average Tree Sizes for Varying Numbers of Agents", "Number of Agents, m", "Average Tree Size [num. nodes]");
+        // Visualizer::makeBarGraph(avgCompTimes, dataSetLabels, "Average Computation Sizes for Varying Numbers of Agents", "Number of Agents, m", "Average Computation Time [ms]");
+        // Visualizer::showFigures();
+    }
+
+    /*-------- Exercise 2(b) --------*/
+    {
+        // MultiAgentProblem2D hw8ws1 = HW8::getWorkspace1(2);
+
+        // unsigned int n{7500};
+        // double r{0.5};
+        // double goalProb{0.05};
+        // double epsilon{0.25};
+
+        // MyDecentralizedMultiAgentRRT multiPlanner{n, r, goalProb, epsilon};
+
+        // amp::MultiAgentPath2D path = multiPlanner.plan(hw8ws1);
+
+        // HW8::check(path, hw8ws1);
+        // Visualizer::makeFigure(hw8ws1, path);
+        // Visualizer::showFigures();
     }
 
     /*-------- Grading --------*/
     {
-        
+        unsigned int n{100000};
+        double r{0.5};
+        double goalProb{0.05};
+        double epsilon{0.25};
+
+        MyCentralizedMultiAgentRRT multiCentralized{n, r, goalProb, epsilon};
+        MyDecentralizedMultiAgentRRT multiDecentralized{n, r, goalProb, epsilon};
+
+        HW8::grade(multiCentralized, multiDecentralized, "michael.miller-5@colorado.edu", argc, argv);
     }
 
     /*-------- Testing/Debugging --------*/
@@ -153,6 +182,7 @@ int main(int argc, char** argv) {
         // Visualizer::showFigures();
 
         // HW8::check(path, hw8ws1);
+
 
         // Valid Solution Benchmark
         // MultiAgentProblem2D hw8ws1 = HW8::getWorkspace1(2);
