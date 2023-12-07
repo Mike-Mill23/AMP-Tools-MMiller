@@ -1,0 +1,454 @@
+x_min: 0
+x_max: 21
+y_min: 0
+y_max: 16
+obstacles:
+  - vertices_ccw:
+      - x: 1
+        y: 1
+      - x: 2
+        y: 1
+      - x: 2
+        y: 3
+      - x: 1
+        y: 3
+      - x: 1
+        y: 1
+  - vertices_ccw:
+      - x: 3
+        y: 1
+      - x: 4
+        y: 1
+      - x: 4
+        y: 3
+      - x: 3
+        y: 3
+      - x: 3
+        y: 1
+  - vertices_ccw:
+      - x: 5
+        y: 1
+      - x: 6
+        y: 1
+      - x: 6
+        y: 3
+      - x: 5
+        y: 3
+      - x: 5
+        y: 1
+  - vertices_ccw:
+      - x: 7
+        y: 1
+      - x: 8
+        y: 1
+      - x: 8
+        y: 3
+      - x: 7
+        y: 3
+      - x: 7
+        y: 1
+  - vertices_ccw:
+      - x: 9
+        y: 1
+      - x: 10
+        y: 1
+      - x: 10
+        y: 3
+      - x: 9
+        y: 3
+      - x: 9
+        y: 1
+  - vertices_ccw:
+      - x: 11
+        y: 1
+      - x: 12
+        y: 1
+      - x: 12
+        y: 3
+      - x: 11
+        y: 3
+      - x: 11
+        y: 1
+  - vertices_ccw:
+      - x: 13
+        y: 1
+      - x: 14
+        y: 1
+      - x: 14
+        y: 3
+      - x: 13
+        y: 3
+      - x: 13
+        y: 1
+  - vertices_ccw:
+      - x: 15
+        y: 1
+      - x: 16
+        y: 1
+      - x: 16
+        y: 3
+      - x: 15
+        y: 3
+      - x: 15
+        y: 1
+  - vertices_ccw:
+      - x: 17
+        y: 1
+      - x: 18
+        y: 1
+      - x: 18
+        y: 3
+      - x: 17
+        y: 3
+      - x: 17
+        y: 1
+  - vertices_ccw:
+      - x: 19
+        y: 1
+      - x: 20
+        y: 1
+      - x: 20
+        y: 3
+      - x: 19
+        y: 3
+      - x: 19
+        y: 1
+  - vertices_ccw:
+      - x: 1
+        y: 5
+      - x: 2
+        y: 5
+      - x: 2
+        y: 7
+      - x: 1
+        y: 7
+      - x: 1
+        y: 5
+  - vertices_ccw:
+      - x: 3
+        y: 5
+      - x: 4
+        y: 5
+      - x: 4
+        y: 7
+      - x: 3
+        y: 7
+      - x: 3
+        y: 5
+  - vertices_ccw:
+      - x: 5
+        y: 5
+      - x: 6
+        y: 5
+      - x: 6
+        y: 7
+      - x: 5
+        y: 7
+      - x: 5
+        y: 5
+  - vertices_ccw:
+      - x: 7
+        y: 5
+      - x: 8
+        y: 5
+      - x: 8
+        y: 7
+      - x: 7
+        y: 7
+      - x: 7
+        y: 5
+  - vertices_ccw:
+      - x: 9
+        y: 5
+      - x: 10
+        y: 5
+      - x: 10
+        y: 7
+      - x: 9
+        y: 7
+      - x: 9
+        y: 5
+  - vertices_ccw:
+      - x: 11
+        y: 5
+      - x: 12
+        y: 5
+      - x: 12
+        y: 7
+      - x: 11
+        y: 7
+      - x: 11
+        y: 5
+  - vertices_ccw:
+      - x: 13
+        y: 5
+      - x: 14
+        y: 5
+      - x: 14
+        y: 7
+      - x: 13
+        y: 7
+      - x: 13
+        y: 5
+  - vertices_ccw:
+      - x: 15
+        y: 5
+      - x: 16
+        y: 5
+      - x: 16
+        y: 7
+      - x: 15
+        y: 7
+      - x: 15
+        y: 5
+  - vertices_ccw:
+      - x: 17
+        y: 5
+      - x: 18
+        y: 5
+      - x: 18
+        y: 7
+      - x: 17
+        y: 7
+      - x: 17
+        y: 5
+  - vertices_ccw:
+      - x: 19
+        y: 5
+      - x: 20
+        y: 5
+      - x: 20
+        y: 7
+      - x: 19
+        y: 7
+      - x: 19
+        y: 5
+  - vertices_ccw:
+      - x: 1
+        y: 9
+      - x: 2
+        y: 9
+      - x: 2
+        y: 11
+      - x: 1
+        y: 11
+      - x: 1
+        y: 9
+  - vertices_ccw:
+      - x: 3
+        y: 9
+      - x: 4
+        y: 9
+      - x: 4
+        y: 11
+      - x: 3
+        y: 11
+      - x: 3
+        y: 9
+  - vertices_ccw:
+      - x: 5
+        y: 9
+      - x: 6
+        y: 9
+      - x: 6
+        y: 11
+      - x: 5
+        y: 11
+      - x: 5
+        y: 9
+  - vertices_ccw:
+      - x: 7
+        y: 9
+      - x: 8
+        y: 9
+      - x: 8
+        y: 11
+      - x: 7
+        y: 11
+      - x: 7
+        y: 9
+  - vertices_ccw:
+      - x: 9
+        y: 9
+      - x: 10
+        y: 9
+      - x: 10
+        y: 11
+      - x: 9
+        y: 11
+      - x: 9
+        y: 9
+  - vertices_ccw:
+      - x: 11
+        y: 9
+      - x: 12
+        y: 9
+      - x: 12
+        y: 11
+      - x: 11
+        y: 11
+      - x: 11
+        y: 9
+  - vertices_ccw:
+      - x: 13
+        y: 9
+      - x: 14
+        y: 9
+      - x: 14
+        y: 11
+      - x: 13
+        y: 11
+      - x: 13
+        y: 9
+  - vertices_ccw:
+      - x: 15
+        y: 9
+      - x: 16
+        y: 9
+      - x: 16
+        y: 11
+      - x: 15
+        y: 11
+      - x: 15
+        y: 9
+  - vertices_ccw:
+      - x: 17
+        y: 9
+      - x: 18
+        y: 9
+      - x: 18
+        y: 11
+      - x: 17
+        y: 11
+      - x: 17
+        y: 9
+  - vertices_ccw:
+      - x: 19
+        y: 9
+      - x: 20
+        y: 9
+      - x: 20
+        y: 11
+      - x: 19
+        y: 11
+      - x: 19
+        y: 9
+  - vertices_ccw:
+      - x: 1
+        y: 13
+      - x: 2
+        y: 13
+      - x: 2
+        y: 15
+      - x: 1
+        y: 15
+      - x: 1
+        y: 13
+  - vertices_ccw:
+      - x: 3
+        y: 13
+      - x: 4
+        y: 13
+      - x: 4
+        y: 15
+      - x: 3
+        y: 15
+      - x: 3
+        y: 13
+  - vertices_ccw:
+      - x: 5
+        y: 13
+      - x: 6
+        y: 13
+      - x: 6
+        y: 15
+      - x: 5
+        y: 15
+      - x: 5
+        y: 13
+  - vertices_ccw:
+      - x: 7
+        y: 13
+      - x: 8
+        y: 13
+      - x: 8
+        y: 15
+      - x: 7
+        y: 15
+      - x: 7
+        y: 13
+  - vertices_ccw:
+      - x: 9
+        y: 13
+      - x: 10
+        y: 13
+      - x: 10
+        y: 15
+      - x: 9
+        y: 15
+      - x: 9
+        y: 13
+  - vertices_ccw:
+      - x: 11
+        y: 13
+      - x: 12
+        y: 13
+      - x: 12
+        y: 15
+      - x: 11
+        y: 15
+      - x: 11
+        y: 13
+  - vertices_ccw:
+      - x: 13
+        y: 13
+      - x: 14
+        y: 13
+      - x: 14
+        y: 15
+      - x: 13
+        y: 15
+      - x: 13
+        y: 13
+  - vertices_ccw:
+      - x: 15
+        y: 13
+      - x: 16
+        y: 13
+      - x: 16
+        y: 15
+      - x: 15
+        y: 15
+      - x: 15
+        y: 13
+  - vertices_ccw:
+      - x: 17
+        y: 13
+      - x: 18
+        y: 13
+      - x: 18
+        y: 15
+      - x: 17
+        y: 15
+      - x: 17
+        y: 13
+  - vertices_ccw:
+      - x: 19
+        y: 13
+      - x: 20
+        y: 13
+      - x: 20
+        y: 15
+      - x: 19
+        y: 15
+      - x: 19
+        y: 13
+agents:
+  - agent:
+      radius: 0.25
+      q_init:
+        x: 0.5
+        y: 0.5
+      q_goal:
+        x: 20.5
+        y: 15.5
