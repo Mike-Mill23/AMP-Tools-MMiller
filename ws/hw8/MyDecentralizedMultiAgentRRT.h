@@ -41,7 +41,7 @@ namespace amp {
             void createTree(const amp::MultiAgentProblem2D& problem, MyDecentralizedMultiAgentRRT::DecentralizedMultiAgentRRTResult& result, bool& resultFound);
             bool checkObstacleCollisions(const amp::MultiAgentProblem2D& problem, const Eigen::Vector2d& q_near, const Eigen::Vector2d& q_new, const int& agentNum);
             bool checkRobotCollision(const amp::MultiAgentProblem2D& problem, MyDecentralizedMultiAgentRRT::DecentralizedMultiAgentRRTResult& result, const Eigen::Vector2d& q_near, const Eigen::Vector2d& q_new, const int& agentNum, const int& agentNumHighPri, const int& timeStep);
-            void highPriGoalCheck(const amp::MultiAgentProblem2D& problem, MyDecentralizedMultiAgentRRT::DecentralizedMultiAgentRRTResult& result, const int& agentNum);
+            bool highPriGoalCollision(const amp::MultiAgentProblem2D& problem, MyDecentralizedMultiAgentRRT::DecentralizedMultiAgentRRTResult& result, const int& agentNum, int& agentCollisionNum);
 
             unsigned int nSamples{0};
             double stepSize{1.0};
