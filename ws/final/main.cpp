@@ -4,6 +4,7 @@
 // Include the header of the shared class
 
 // Include headers from hw ws
+#include "DecentralizedMultiAgentPRMStar.h"
 #include "ParseYamlProblem.h"
 
 // Include other stdlib headers
@@ -15,11 +16,14 @@ using namespace amp;
 
 int main(int argc, char** argv) {
     MultiAgentProblem2D problem = buildEnvironment("../../ws/final/garden_center_problem.yaml");
-    MultiAgentPath2D path{};
 
-    path.agent_paths.push_back(Path2D());
-    path.agent_paths[0].waypoints.push_back(problem.agent_properties[0].q_init);
-    path.agent_paths[0].waypoints.push_back(problem.agent_properties[0].q_goal);
+    unsigned int n{5000};
+    unsigned int d{2};
+    double mu{(21 * 16) - (2 * 40)};
+    double zeta{M_PI * pow(1, 2)};
+    DecentralizedMultiAgentPRMStar prmStarPlanner{n, d, mu, zeta};
+
+    MultiAgentPath2D path = prmStarPlanner.plan(problem);
 
     Visualizer::makeFigure(problem, path);
     Visualizer::showFigures();

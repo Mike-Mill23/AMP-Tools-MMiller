@@ -132,3 +132,13 @@ CentralizedRRTSearchHeuristic::CentralizedRRTSearchHeuristic(const amp::Shortest
         heuristicValues.insert({i, distToGoal});
     }
 }
+
+// Heuristic is L2 distance from node to goal node in the workspace
+PRMStarSearchHeuristic::PRMStarSearchHeuristic(const amp::ShortestPathProblem& problem, std::unique_ptr<std::vector<Eigen::Vector2d>>& sampledPoints) {
+    Eigen::Vector2d q_goal{sampledPoints->at(problem.goal_node)};
+
+    for (int i = 0; i < sampledPoints->size(); i++) {
+        double distToGoal = distanceL2(sampledPoints->at(i), q_goal);
+        heuristicValues.insert({i, distToGoal});
+    }
+}

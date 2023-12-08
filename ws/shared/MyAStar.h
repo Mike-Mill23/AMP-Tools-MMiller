@@ -74,4 +74,18 @@ namespace amp {
         private:
             std::map<amp::Node, double> heuristicValues;
     };
+
+    class PRMStarSearchHeuristic : public SearchHeuristic {
+        public:
+            PRMStarSearchHeuristic(const amp::ShortestPathProblem& problem, std::unique_ptr<std::vector<Eigen::Vector2d>>& sampledPoints);
+            ~PRMStarSearchHeuristic() = default;
+
+            /// @brief Get the heuristic value stored in `heuristicValues`. 
+            /// @param node Node to get the heuristic value h(node) for. 
+            /// @return Heuristic value
+            double operator()(amp::Node node) const { return heuristicValues.at(node); }
+
+        private:
+            std::map<amp::Node, double> heuristicValues;
+    };
 }
