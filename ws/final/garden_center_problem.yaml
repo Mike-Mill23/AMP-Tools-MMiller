@@ -452,3 +452,27 @@ agents:
       q_goal:
         x: 20.5
         y: 15.5
+  - agent:
+      radius: 0.25
+      q_init:
+        x: 0.5
+        y: 15.5
+      q_goal:
+        x: 20.5
+        y: 0.5
+  - agent:
+      radius: 0.25
+      q_init:
+        x: 20.5
+        y: 8.0
+      q_goal:
+        x: 0.5
+        y: 8.0
+  - agent:
+      radius: 0.25
+      q_init:
+        x: 10.5
+        y: 15.5
+      q_goal:
+        x: 10.5
+        y: 0.5

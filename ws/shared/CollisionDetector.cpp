@@ -164,6 +164,33 @@ std::vector<Eigen::Vector2d> findClosestCs(const Eigen::Vector2d& q, const amp::
     return sideCs;
 }
 
+Eigen::Vector2d findClosestPoint(const Eigen::Vector2d& q, const std::vector<Eigen::Vector2d>& line) {
+    Eigen::Vector2d c{};
+
+    Eigen::Vector2d A = line[0];
+    Eigen::Vector2d B = line[1];
+
+    Eigen::Vector2d v = B - A;
+    Eigen::Vector2d u = A - q;
+
+    double t = -((v.dot(u)) / (v.dot(v)));
+
+    if (t >= 0 && t <= 1) {
+        c = ((1 - t) * A) + (t * B);
+    } else {
+        double g0 = pow(u.norm(), 2);
+        double g1 = pow(v.norm(), 2) + (2 * v.dot(u)) + pow(u.norm(), 2);
+        
+        if (g0 <= g1) {
+            c = A;
+        } else {
+            c = B;
+        }
+    }
+
+    return c;
+}
+
 double distanceL2(const Eigen::Vector2d& p1, const Eigen::Vector2d& p2) {
     Eigen::Vector2d diff = p1 - p2;
     return diff.norm();

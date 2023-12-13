@@ -29,11 +29,28 @@ amp::MultiAgentPath2D DecentralizedMultiAgentPRMStar::plan(const amp::MultiAgent
             for (auto n : nodePath.node_path) {
                 result.path.agent_paths[i].waypoints.push_back(result(n));
             }
+
+            for (int j = 0; j < i; j++) {
+                if (decentralizePath(problem, result, i, j)) {
+                    j = -1; // Will increment at start of next loop, need -1 to get 0 at start of next loop
+                }
+            }
         } else {
             result.path.agent_paths[i].waypoints.push_back(problem.agent_properties[i].q_init);
             result.path.agent_paths[i].waypoints.push_back(problem.agent_properties[i].q_goal);
         }
     }
+
+    //-------- Roadmap Visualization --------//
+    // Problem2D roadmapProb{};
+    // roadmapProb.x_min = problem.x_min;
+    // roadmapProb.x_max = problem.x_max;
+    // roadmapProb.y_min = problem.y_min;
+    // roadmapProb.y_max = problem.y_max;
+    // roadmapProb.obstacles = problem.obstacles;
+    // roadmapProb.q_init = problem.agent_properties[0].q_init;
+    // roadmapProb.q_goal = problem.agent_properties[0].q_goal;
+    // Visualizer::makeFigure(roadmapProb, *(result.roadmap), result);
 
     return result.path;
 }
@@ -99,6 +116,51 @@ void DecentralizedMultiAgentPRMStar::createGraph(const amp::MultiAgentProblem2D&
     return;
 }
 
+bool DecentralizedMultiAgentPRMStar::decentralizePath(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result, const int& agentNum, const int& hiPriAgentNum) {
+    std::vector<Eigen::Vector2d> agentPath = result.path.agent_paths[agentNum].waypoints;
+    size_t agentPathSize = agentPath.size();
+    bool isCollision{false};
+
+    for (int i = 0; i < agentPathSize - 1; i++) {
+        isCollision = checkRobotCollision(problem, result, agentPath[i], agentPath[i + 1], agentNum, hiPriAgentNum, i);
+
+        if (isCollision) {
+            int numBackups = 1;
+            int stationaryIndex = i;
+            std::vector<Eigen::Vector2d> modPath{};
+            size_t modPathSize;
+
+            while (true) {
+                modPath = agentPath;
+                modPath.insert(modPath.begin() + stationaryIndex + 1, numBackups, modPath[stationaryIndex]);
+                modPathSize = modPath.size();
+
+                for (int j = stationaryIndex; j < modPathSize - 1; j++) {
+                    isCollision = checkRobotCollision(problem, result, modPath[j], modPath[j + 1], agentNum, hiPriAgentNum, j);
+                    
+                    if (isCollision) {
+                        numBackups++;
+                        if (stationaryIndex > 0) {
+                            stationaryIndex--;
+                        }
+                        break;
+                    }
+                }
+
+                if (!isCollision) {
+                    result.path.agent_paths[agentNum].waypoints = modPath;
+                    return true;
+                } else if (numBackups > agentPathSize) {
+                    LOG("decentralizePath(): Number of backups exceeded, cannot decentralize path.");
+                    return false;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
 bool DecentralizedMultiAgentPRMStar::checkEdgeCollisions(const amp::MultiAgentProblem2D& problem, const Eigen::Vector2d& current, const Eigen::Vector2d& neighbor) {
     int numSubdivisions{6};
     Eigen::Vector2d direction = neighbor - current;
@@ -131,6 +193,10 @@ bool DecentralizedMultiAgentPRMStar::checkEdgeCollisions(const amp::MultiAgentPr
 
 bool DecentralizedMultiAgentPRMStar::checkObstacleCollisions(const amp::MultiAgentProblem2D& problem, const Eigen::Vector2d& config) {
     for (auto obstacle : problem.obstacles) {
+        if (collisionPointPolygon(config, obstacle)) {
+            return true;
+        }
+
         Eigen::Vector2d c{0.0, 0.0};
         double distToObs = d_iq(config, obstacle, c);
 
@@ -144,71 +210,47 @@ bool DecentralizedMultiAgentPRMStar::checkObstacleCollisions(const amp::MultiAge
     return false;
 }
 
-bool DecentralizedMultiAgentPRMStar::checkRobotCollision(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result, const Eigen::Vector2d& q_near, const Eigen::Vector2d& q_new, const int& agentNum, const int& agentNumHighPri, const int& timeStep) {
-    int numSubdivisions{6};
-    Eigen::Vector2d direction = q_new - q_near;
-    Eigen::Vector2d q_new_other{};
-    Eigen::Vector2d q_near_other{};
+bool DecentralizedMultiAgentPRMStar::checkRobotCollision(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result, const Eigen::Vector2d& curr, const Eigen::Vector2d& next, const int& agentNum, const int& hiPriAgentNum, const int& timeStep) {
+    Eigen::Vector2d next_other{};
+    Eigen::Vector2d curr_other{};
     
-    if (timeStep > result.path.agent_paths[agentNumHighPri].waypoints.size()) {
-        q_new_other = result.path.agent_paths[agentNumHighPri].waypoints[result.path.agent_paths[agentNumHighPri].waypoints.size() - 1];
-        q_near_other = q_new_other;
+    if (timeStep > result.path.agent_paths[hiPriAgentNum].waypoints.size() - 2) {
+        next_other = result.path.agent_paths[hiPriAgentNum].waypoints[result.path.agent_paths[hiPriAgentNum].waypoints.size() - 1];
+        curr_other = next_other;
     } else {
-        q_new_other = result.path.agent_paths[agentNumHighPri].waypoints[timeStep];
-        q_near_other = result.path.agent_paths[agentNumHighPri].waypoints[timeStep - 1];
+        next_other = result.path.agent_paths[hiPriAgentNum].waypoints[timeStep + 1];
+        curr_other = result.path.agent_paths[hiPriAgentNum].waypoints[timeStep];
     }
-    Eigen::Vector2d direction_other = q_new_other - q_near_other;
 
-    double sumRadii = problem.agent_properties[agentNum].radius + problem.agent_properties[agentNumHighPri].radius;
-    double agentCenterDist = distanceL2(q_new, q_new_other);
+    std::vector<Eigen::Vector2d> pathLine{curr, next};
+    std::vector<Eigen::Vector2d> pathLine_other{curr_other, next_other};
+    if (collisionLineLine(pathLine, pathLine_other)) {
+        return true;
+    }
+
+    double sumRadii = problem.agent_properties[agentNum].radius + problem.agent_properties[hiPriAgentNum].radius;
+    Eigen::Vector2d c = findClosestPoint(curr, pathLine_other);
+    double agentCenterDist = distanceL2(curr, c);
     if (agentCenterDist <= 1.1 * sumRadii) {
         return true;
     }
 
-    agentCenterDist = distanceL2(q_near, q_new_other);
+    c = findClosestPoint(next, pathLine_other);
+    agentCenterDist = distanceL2(next, c);
     if (agentCenterDist <= 1.1 * sumRadii) {
         return true;
     }
 
-    agentCenterDist = distanceL2(q_near_other, q_new);
+    c = findClosestPoint(curr_other, pathLine);
+    agentCenterDist = distanceL2(curr_other, c);
     if (agentCenterDist <= 1.1 * sumRadii) {
         return true;
     }
 
-    if ((distanceL2(q_near, q_new_other) <= distanceL2(q_new, q_near) + sumRadii) || (distanceL2(q_near_other, q_new) <= distanceL2(q_new_other, q_near_other) + sumRadii)) {
-        for (int m = 0; m < numSubdivisions; m++) {
-            int numPoints = pow(2, m);
-            double fraction = 1.0 / (2 * numPoints);
-            for (int n = 0; n < numPoints; n++) {
-                Eigen::Vector2d subPoint = q_near + (direction * (fraction + (2 * n * fraction)));
-                Eigen::Vector2d subPoint_other = q_near_other + (direction_other * (fraction + (2 * n * fraction)));
-                agentCenterDist = distanceL2(subPoint, subPoint_other);
-                if (agentCenterDist <= 1.1 * sumRadii) {
-                    return true;
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
-bool DecentralizedMultiAgentPRMStar::highPriGoalCollision(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result, const int& agentNum, int& agentCollisionNum) {
-    int agentSize = result.path.agent_paths[agentNum].waypoints.size();
-
-    for (int i = 0; i < agentNum; i++) {
-        int agentHighPriSize = result.path.agent_paths[i].waypoints.size();
-        if (agentSize < agentHighPriSize) {
-            Eigen::Vector2d q_new = result.path.agent_paths[agentNum].waypoints[agentSize - 1];
-            Eigen::Vector2d q_near = q_new;
-
-            for (int j = agentSize - 1; j < agentHighPriSize; j++) {
-                if (checkRobotCollision(problem, result, q_near, q_new, agentNum, i, j)) {
-                    agentCollisionNum = i;
-                    return true;
-                }
-            }
-        }
+    c = findClosestPoint(next_other, pathLine);
+    agentCenterDist = distanceL2(next_other, c);
+    if (agentCenterDist <= 1.1 * sumRadii) {
+        return true;
     }
 
     return false;

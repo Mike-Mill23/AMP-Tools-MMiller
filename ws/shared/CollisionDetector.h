@@ -21,4 +21,6 @@ double d_iq(const Eigen::Vector2d& q, const amp::Obstacle2D& obst, Eigen::Vector
 
 std::vector<Eigen::Vector2d> findClosestCs(const Eigen::Vector2d& q, const amp::Obstacle2D& obst);
 
+Eigen::Vector2d findClosestPoint(const Eigen::Vector2d& q, const std::vector<Eigen::Vector2d>& line);
+
 double distanceL2(const Eigen::Vector2d& p1, const Eigen::Vector2d& p2);
