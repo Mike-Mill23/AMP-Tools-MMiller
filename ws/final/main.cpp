@@ -22,10 +22,11 @@ int main(int argc, char** argv) {
     unsigned int d{2};
     double mu{(21 * 16) - (2 * 40)};
     double zeta{M_PI * pow(1, 2)};
+    unsigned int numTasks{6};
 
     // for (int i = 0; i < 100; i++) {
     //     LOG("Planning " << i+1 << "...");
-    //     DecentralizedMultiAgentPRMStar prmStarPlanner{n, d, mu, zeta};
+    //     DecentralizedMultiAgentPRMStar prmStarPlanner{n, d, mu, zeta, numTasks};
 
     //     MultiAgentPath2D path = prmStarPlanner.plan(problem);
 
@@ -36,7 +37,7 @@ int main(int argc, char** argv) {
     //     }
     // }
 
-    DecentralizedMultiAgentPRMStar prmStarPlanner{n, d, mu, zeta};
+    DecentralizedMultiAgentPRMStar prmStarPlanner{n, d, mu, zeta, numTasks};
 
     MultiAgentPath2D path = prmStarPlanner.plan(problem);
 

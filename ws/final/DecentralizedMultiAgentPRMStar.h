@@ -3,7 +3,8 @@
 #include "AMPCore.h"
 #include "CollisionDetector.h"
 #include "MyAStar.h"
-#include "KDTree.hpp"
+#include "KDTree.hpp"  // https://github.com/crvs/KDTree
+#include "Hungarian.h" // https://github.com/mcximing/hungarian-algorithm-cpp
 
 #include <random>
 #include <string.h>
@@ -22,21 +23,26 @@ namespace amp {
                 amp::MultiAgentPath2D path{};
 
                 Eigen::Vector2d operator()(amp::Node& node) const { return sampledPoints->at(node); }
+
+                DecentralizedMultiAgentPRMStarResult() = default;
+                DecentralizedMultiAgentPRMStarResult(uint32_t numAgents) { path = MultiAgentPath2D(numAgents); }
             };
 
             /// @brief Solve a motion planning problem.
             /// @param problem Multi-agent motion planning problem
             /// @return Array of paths that are ordered corresponding to the `agent_properties` field in `problem`.
-            amp::MultiAgentPath2D plan(const amp::MultiAgentProblem2D& problem);
+            amp::MultiAgentPath2D plan(const amp::MultiAgentProblem2D& initProblem);
 
-            DecentralizedMultiAgentPRMStar(const unsigned int& n, const unsigned int& d, const double& mu, const double& zeta) 
-                                           : nSamples(n), d(d), mu_free(mu), zeta_d(zeta) {}
+            DecentralizedMultiAgentPRMStar(const unsigned int& n, const unsigned int& d, const double& mu, const double& zeta, const unsigned int& numTasks) 
+                                           : nSamples(n), d(d), mu_free(mu), zeta_d(zeta), numTasks(numTasks) {}
             ~DecentralizedMultiAgentPRMStar() = default;
 
         private:
             void sampleEnv(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result);
             void createGraph(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result);
-            bool decentralizePath(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result, const int& i, const int& j);
+            void assignTasks(amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result);
+            void decentralizePath(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result, const int& agentNum);
+            void recursiveBackup(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result, const int& agentNum, const std::vector<Eigen::Vector2d>& path, int numBackups);
             bool checkEdgeCollisions(const amp::MultiAgentProblem2D& problem, const Eigen::Vector2d& current, const Eigen::Vector2d& neighbor);
             bool checkObstacleCollisions(const amp::MultiAgentProblem2D& problem, const Eigen::Vector2d& config);
             bool checkRobotCollision(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result, const Eigen::Vector2d& q_near, const Eigen::Vector2d& q_new, const int& agentNum, const int& agentNumHighPri, const int& timeStep);
@@ -45,5 +51,6 @@ namespace amp {
             unsigned int d{2};
             double mu_free{336.0};
             double zeta_d{M_PI};
+            unsigned int numTasks{1};
     };
 }
