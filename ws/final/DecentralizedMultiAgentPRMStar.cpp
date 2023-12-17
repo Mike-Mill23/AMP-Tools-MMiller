@@ -4,6 +4,7 @@ using namespace amp;
 
 
 amp::MultiAgentPath2D DecentralizedMultiAgentPRMStar::plan(const amp::MultiAgentProblem2D& initProblem) {
+    auto start = std::chrono::high_resolution_clock::now();
     amp::MultiAgentProblem2D problem = initProblem;
     DecentralizedMultiAgentPRMStarResult result{static_cast<uint32_t>(initProblem.numAgents())};
     result.sampledPoints = std::make_unique<std::vector<Eigen::Vector2d>>();
@@ -13,20 +14,15 @@ amp::MultiAgentPath2D DecentralizedMultiAgentPRMStar::plan(const amp::MultiAgent
     createGraph(problem, result);
 
     for (int t = 0; t <= numTasks; t++) {
-        // LOG("Task " << t << ":");
         if (t == numTasks) {
             for (int i = 0; i < problem.numAgents(); i++) {
-                problem.agent_properties[i].q_goal = initProblem.agent_properties[i].q_init;
+                problem.agent_properties[i].q_goal = initProblem.agent_properties[i].q_goal;
             }
         } else {
             assignTasks(problem, result);
         }
 
         for (int i = 0; i < problem.numAgents(); i++) {
-            // LOG("\tAgent " << i << ":");
-            // LOG("\t\tq_init: (" << problem.agent_properties[i].q_init[0] << ", " << problem.agent_properties[i].q_init[1] << ")");
-            // LOG("\t\tq_goal: (" << problem.agent_properties[i].q_goal[0] << ", " << problem.agent_properties[i].q_goal[1] << ")");
-
             ShortestPathProblem prmStarProblem{};
             prmStarProblem.graph = result.roadmap;
             prmStarProblem.init_node = static_cast<Node>(std::find(result.sampledPoints->begin(), result.sampledPoints->end(), problem.agent_properties[i].q_init) - result.sampledPoints->begin());
@@ -64,6 +60,17 @@ amp::MultiAgentPath2D DecentralizedMultiAgentPRMStar::plan(const amp::MultiAgent
         }
     }
 
+    // Metric Calculations
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    compTime = static_cast<double>(duration.count()) * 1000;
+
+    pathLength = 0.0;
+    for (auto& path : result.path.agent_paths) {
+        pathLength += path.length();
+    }
+    pathLength /= problem.numAgents();
+
     //-------- Roadmap Visualization --------//
     // Problem2D roadmapProb{};
     // roadmapProb.x_min = problem.x_min;
@@ -83,10 +90,6 @@ void DecentralizedMultiAgentPRMStar::sampleEnv(const amp::MultiAgentProblem2D& p
     Eigen::Vector2d sample{};
 
     std::random_device rd;
-    // unsigned int seed = rd();
-    // printf("rd seed: %u\n", seed);
-    // unsigned int seed = 745567386;
-    // std::mt19937 gen(seed);
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> disx(problem.x_min, problem.x_max);
     std::uniform_real_distribution<> disy(problem.y_min, problem.y_max);
@@ -104,8 +107,7 @@ void DecentralizedMultiAgentPRMStar::sampleEnv(const amp::MultiAgentProblem2D& p
 
     for (int i = 0; i < problem.agent_properties.size(); i++) {
         result.sampledPoints->push_back(problem.agent_properties[i].q_init);
-        // result.sampledPoints->insert(result.sampledPoints->begin() + (2 * i), problem.agent_properties[i].q_init);
-        // result.sampledPoints->insert(result.sampledPoints->begin() + ((2 * i) + 1), problem.agent_properties[i].q_goal);
+        result.sampledPoints->push_back(problem.agent_properties[i].q_goal);
     }
 
     return;
@@ -122,6 +124,7 @@ void DecentralizedMultiAgentPRMStar::createGraph(const amp::MultiAgentProblem2D&
     KDTree mapTree{kdPoints};
     double gammaPRM = (2 * pow(1 + (1/d), 1/d) * pow(mu_free/zeta_d, 1/d)) + 0.001;
     double prmStarRad = gammaPRM * pow(log(nSamples)/nSamples, 1/d);
+    // double prmStarRad = 0.5;
 
     for (int i = 0; i < result.sampledPoints->size(); i++) {
         Eigen::Vector2d currentSampleEig{result.sampledPoints->at(i)};
@@ -193,6 +196,13 @@ void DecentralizedMultiAgentPRMStar::assignTasks(amp::MultiAgentProblem2D& probl
         while (isCollision) {
             sample << disx(gen), disy(gen);
             isCollision = checkObstacleCollisions(problem, sample);
+
+            for (int j = 0; j < newGoals.size(); j++) {
+                if (distanceL2(sample, newGoals[j]) <= (2.2 * max_radius)) {
+                    isCollision = true;
+                    break;
+                }
+            }
         }
 
         newGoals.push_back(sample);
@@ -228,6 +238,7 @@ void DecentralizedMultiAgentPRMStar::assignTasks(amp::MultiAgentProblem2D& probl
     KDTree mapTree{kdPoints};
     double gammaPRM = (2 * pow(1 + (1/d), 1/d) * pow(mu_free/zeta_d, 1/d)) + 0.001;
     double prmStarRad = gammaPRM * pow(log(nSamples)/nSamples, 1/d);
+    // double prmStarRad = 0.5;
 
     for (int i = 0; i < newGoals.size(); i++) {
         Eigen::Vector2d currentSampleEig{newGoals[i]};
@@ -254,13 +265,63 @@ void DecentralizedMultiAgentPRMStar::assignTasks(amp::MultiAgentProblem2D& probl
 void DecentralizedMultiAgentPRMStar::decentralizePath(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result, const int& agentNum) {
     std::vector<Eigen::Vector2d> agentPath = result.path.agent_paths[agentNum].waypoints;
     int numBackups = 0;
+    Eigen::Vector2d collisionPoint{-1.0, -1.0};
 
-    recursiveBackup(problem, result, agentNum, agentPath, numBackups);
+    bool backupSuccess = recursiveBackup(problem, result, agentNum, agentPath, numBackups, collisionPoint);
+    if (!backupSuccess) {
+        ShortestPathProblem replanProblem{};
+        replanProblem.graph = result.roadmap;
+        replanProblem.init_node = static_cast<Node>(std::find(result.sampledPoints->begin(), result.sampledPoints->end(), problem.agent_properties[agentNum].q_init) - result.sampledPoints->begin());
+        replanProblem.goal_node = static_cast<Node>(std::find(result.sampledPoints->begin(), result.sampledPoints->end(), problem.agent_properties[agentNum].q_goal) - result.sampledPoints->begin());
+
+        PRMStarSearchHeuristic heuristic{replanProblem, result.sampledPoints};
+        MyAStar aStar{};
+
+        while (!backupSuccess) {
+            std::vector<Eigen::Vector2d>::iterator eraseIt = std::find(result.path.agent_paths[agentNum].waypoints.begin(), result.path.agent_paths[agentNum].waypoints.end(), problem.agent_properties[agentNum].q_init) + 1;
+            std::vector<Eigen::Vector2d>::iterator removeIt{};
+            if (collisionPoint[0] >= 0) {
+                removeIt = std::find(result.path.agent_paths[agentNum].waypoints.begin(), result.path.agent_paths[agentNum].waypoints.end(), collisionPoint);
+            } else {
+                // LOG("collisionPoint not a valid index.");
+                return;
+            }
+
+            Node removeNode = static_cast<Node>(std::find(result.sampledPoints->begin(), result.sampledPoints->end(), *(removeIt)) - result.sampledPoints->begin());
+            if (replanProblem.graph->children(removeNode).size() == 0) {
+                result.path.agent_paths[agentNum].waypoints = agentPath;
+                // LOG("replanPath: Cannot find free path from init to goal for agent " << agentNum);
+                return;
+            }
+
+            for (auto& child : replanProblem.graph->children(removeNode)) {
+                replanProblem.graph->disconnect(removeNode, child);
+            }
+
+            MyAStar::GraphSearchResult nodePath = aStar.search(replanProblem, heuristic);
+
+            if (nodePath.success) {
+                result.path.agent_paths[agentNum].waypoints.erase(eraseIt, result.path.agent_paths[agentNum].waypoints.end());
+                for (auto n : nodePath.node_path) {
+                    result.path.agent_paths[agentNum].waypoints.push_back(result(n));
+                }
+
+                numBackups = 0;
+                collisionPoint << -1.0, -1.0;
+                backupSuccess = recursiveBackup(problem, result, agentNum, result.path.agent_paths[agentNum].waypoints, numBackups, collisionPoint);
+            } else {
+                result.path.agent_paths[agentNum].waypoints = agentPath;
+                // LOG("replanPath: Cannot find free path from init to goal for agent " << agentNum);
+                return;
+            }
+        }
+        // LOG("replanPath: Found new path from init to goal for agent " << agentNum);
+    }
 
     return;
 }
 
-void DecentralizedMultiAgentPRMStar::recursiveBackup(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result, const int& agentNum, const std::vector<Eigen::Vector2d>& path, int numBackups) {
+bool DecentralizedMultiAgentPRMStar::recursiveBackup(const amp::MultiAgentProblem2D& problem, DecentralizedMultiAgentPRMStar::DecentralizedMultiAgentPRMStarResult& result, const int& agentNum, const std::vector<Eigen::Vector2d>& path, int numBackups, Eigen::Vector2d& firstCollisionPoint) {
     size_t pathSize = path.size();
     bool isCollision{false};
 
@@ -270,6 +331,7 @@ void DecentralizedMultiAgentPRMStar::recursiveBackup(const amp::MultiAgentProble
 
             if (isCollision) {
                 int stationaryIndex = std::find(result.path.agent_paths[agentNum].waypoints.begin(), result.path.agent_paths[agentNum].waypoints.end(), path[i]) - result.path.agent_paths[agentNum].waypoints.begin();
+                firstCollisionPoint = path[i];
                 std::vector<Eigen::Vector2d> modPath{};
                 size_t modPathSize{};
 
@@ -292,11 +354,11 @@ void DecentralizedMultiAgentPRMStar::recursiveBackup(const amp::MultiAgentProble
                     }
 
                     if (numBackups > result.path.agent_paths[hiPriAgentNum].waypoints.size()) {
-                        LOG("recursiveBackup(): Number of backups exceeded, cannot decentralize path.");
-                        return;
+                        // LOG("recursiveBackup(): Number of backups exceeded, cannot decentralize path.");
+                        return false;
                     } else if (!isCollision) {
-                        recursiveBackup(problem, result, agentNum, modPath, numBackups);
-                        return;
+                        Eigen::Vector2d placeholder{-1.0, -1.0};
+                        return recursiveBackup(problem, result, agentNum, modPath, numBackups, placeholder);
                     }
                 }
             }
@@ -304,7 +366,7 @@ void DecentralizedMultiAgentPRMStar::recursiveBackup(const amp::MultiAgentProble
     }
 
     result.path.agent_paths[agentNum].waypoints = path;
-    return;
+    return true;
 }
 
 bool DecentralizedMultiAgentPRMStar::checkEdgeCollisions(const amp::MultiAgentProblem2D& problem, const Eigen::Vector2d& current, const Eigen::Vector2d& neighbor) {
